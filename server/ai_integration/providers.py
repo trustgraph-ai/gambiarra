@@ -265,16 +265,20 @@ class TrustGraphProvider(AIProvider):
             system_msg = ""
             conversation_context = []
 
-            for msg in messages:
+            logger.info(f"🔍 TrustGraph received {len(messages)} messages")
+            for i, msg in enumerate(messages):
                 if msg.get("role") == "system":
                     system_msg = msg.get("content", "")
+                    logger.debug(f"System message: {system_msg[:100]}...")
                 else:
                     role = msg.get("role", "")
                     content = msg.get("content", "")
                     conversation_context.append(f"{role}: {content}")
+                    logger.debug(f"Message {i}: {role}: {content[:100]}...")
 
             # Combine conversation into a single prompt for TrustGraph
             full_prompt = "\n\n".join(conversation_context)
+            logger.info(f"🔍 TrustGraph full prompt ({len(full_prompt)} chars): {full_prompt[:200]}...")
 
             # Create TrustGraph API instance
             api = Api(url=self.base_url)
