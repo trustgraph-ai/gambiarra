@@ -337,14 +337,14 @@ class AIProviderManager:
             self.providers["openai"] = OpenAIProvider(api_key=openai_api_key)
             logger.info("✅ OpenAI provider initialized")
 
-        # Initialize TrustGraph provider if URL provided
-        if trustgraph_url:
-            flow_id = trustgraph_flow or "default"
-            self.providers["trustgraph"] = TrustGraphProvider(
-                base_url=trustgraph_url,
-                model=flow_id
-            )
-            logger.info(f"✅ TrustGraph provider initialized (flow: {flow_id})")
+        # Initialize TrustGraph provider (always available with default URL)
+        trustgraph_url = trustgraph_url or "http://localhost:8088/"
+        flow_id = trustgraph_flow or "default"
+        self.providers["trustgraph"] = TrustGraphProvider(
+            base_url=trustgraph_url,
+            model=flow_id
+        )
+        logger.info(f"✅ TrustGraph provider initialized (URL: {trustgraph_url}, flow: {flow_id})")
 
         logger.info(f"✅ AI providers initialized: {list(self.providers.keys())}")
 

@@ -14,10 +14,6 @@ class ClientConfig:
     server_url: str = "ws://localhost:8000/ws"
     workspace_root: str = "."
 
-    # AI Provider settings
-    ai_provider: str = "test"  # test, openai, trustgraph
-    ai_model: str = "gpt-4"
-
     # Security settings
     auto_approve_reads: bool = True
     command_timeout: int = 30
@@ -35,10 +31,6 @@ class ClientConfig:
         # Load from environment
         self.server_url = os.getenv("GAMBIARRA_SERVER_URL", self.server_url)
         self.workspace_root = os.getenv("GAMBIARRA_WORKSPACE", self.workspace_root)
-
-        # AI Provider settings
-        self.ai_provider = os.getenv("GAMBIARRA_AI_PROVIDER", self.ai_provider)
-        self.ai_model = os.getenv("GAMBIARRA_MODEL", self.ai_model)
 
         self.auto_approve_reads = os.getenv("GAMBIARRA_AUTO_APPROVE_READS", "true").lower() == "true"
         self.command_timeout = int(os.getenv("GAMBIARRA_COMMAND_TIMEOUT", self.command_timeout))

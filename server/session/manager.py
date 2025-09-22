@@ -26,8 +26,6 @@ class SessionMessage:
 @dataclass
 class SessionConfig:
     """Configuration for a session."""
-    ai_provider: str = "test"
-    model: str = "gpt-4"
     working_directory: str = "."
     auto_approve_reads: bool = True
     require_approval_for_writes: bool = True
@@ -142,8 +140,6 @@ class SessionManager:
 
             # Parse config
             session_config = SessionConfig(
-                ai_provider=config.get("ai_provider", "test"),
-                model=config.get("model", "gpt-4"),
                 working_directory=config.get("working_directory", "."),
                 auto_approve_reads=config.get("auto_approve_reads", True),
                 require_approval_for_writes=config.get("require_approval_for_writes", True),
@@ -243,8 +239,6 @@ class SessionManager:
                 "last_activity": session.last_activity,
                 "message_count": len(session.messages),
                 "config": {
-                    "ai_provider": session.config.ai_provider,
-                    "model": session.config.model,
                     "working_directory": session.config.working_directory
                 }
             })

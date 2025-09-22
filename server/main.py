@@ -269,8 +269,8 @@ async def handle_user_message(session_id: str, message: Dict[str, Any]) -> None:
 async def process_ai_response(session_id: str, session):
     """Process AI response with streaming and tool call parsing."""
     try:
-        # Get AI provider
-        provider = ai_provider_manager.get_provider(session.config.ai_provider)
+        # Get AI provider (server-configured)
+        provider = ai_provider_manager.get_provider()
 
         # Generate system prompt (KiloCode compatible)
         system_prompt = await generate_system_prompt(session)
@@ -516,11 +516,9 @@ if __name__ == "__main__":
     print(f"🤖 Default AI provider: {config.ai_provider}")
 
     # Show available providers based on configuration
-    available_providers = ["test"]
+    available_providers = ["test", "trustgraph"]  # Both always available
     if config.openai_api_key:
         available_providers.append("openai")
-    if config.trustgraph_url:
-        available_providers.append("trustgraph")
     print(f"🔌 Available providers: {', '.join(available_providers)}")
 
     print("🔧 Configure your Gambiarra client to connect to this server")
