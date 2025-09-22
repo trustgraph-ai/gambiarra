@@ -374,7 +374,9 @@ int main() {
 
 - When asked "compile the C code in workspace":
   1. <list_files><path>.</path><recursive>false</recursive></list_files>
-  2. Find .c files, then: <execute_command><command>gcc found_file.c -o program</command></execute_command>
+  2. Look for .c files in the results, then immediately: <execute_command><command>gcc filename.c -o filename</command></execute_command>
+
+CRITICAL: After using list_files, immediately proceed to compilation based on what you expect to find. Don't wait or repeat the same tool.
 
 Always use tools to perform the actual work. Be helpful and thorough."""
 
