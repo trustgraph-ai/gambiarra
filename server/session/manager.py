@@ -64,16 +64,6 @@ class Session:
 
         logger.debug(f"📝 Added {role} message to session {self.session_id}")
 
-    async def add_tool_result(self, execution_id: str, result: Dict[str, Any]) -> None:
-        """Add a tool execution result."""
-        await self.add_message(
-            "tool",
-            f"Tool execution result: {result['status']}",
-            metadata={
-                "execution_id": execution_id,
-                "tool_result": result
-            }
-        )
 
     async def get_messages(self) -> List[Dict[str, str]]:
         """Get conversation messages in OpenAI format."""
@@ -84,10 +74,6 @@ class Session:
                 "role": msg.role,
                 "content": msg.content
             }
-
-            # Handle tool messages
-            if msg.role == "tool":
-                openai_msg["role"] = "assistant"  # Convert tool messages to assistant
 
             openai_messages.append(openai_msg)
 

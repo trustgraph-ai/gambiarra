@@ -481,42 +481,54 @@ def format_tool_result_for_ai(result: Dict[str, Any]) -> str:
     if "files" in data and "directories" in data:
         # list_files result
         files = data["files"]
-        if not files:
-            return "No files found in the workspace."
+        directories = data["directories"]
 
-        file_list = []
-        for file_info in files:
-            name = file_info.get("name", "unknown")
-            size = file_info.get("size", 0)
-            file_list.append(f"{name} ({size} bytes)")
+        if not files and not directories:
+            return "No files or directories found in the workspace."
 
-        return f"Found files: {', '.join(file_list)}"
+        result_parts = []
+
+        if directories:
+            dir_names = [d.get("name", "unknown") for d in directories]
+            result_parts.append(f"Directories: {', '.join(dir_names)}")
+
+        if files:
+            file_list = []
+            for file_info in files:
+                name = file_info.get("name", "unknown")
+                size = file_info.get("size", 0)
+                file_list.append(f"{name} ({size} bytes)")
+            result_parts.append(f"Files: {', '.join(file_list)}")
+
+        return "Tool result: " + "; ".join(result_parts)
 
     elif metadata.get("operation") == "file_created":
         # write_to_file result
         path = metadata.get("path", "unknown")
         bytes_written = metadata.get("bytes_written", 0)
-        return f"Created file {path} ({bytes_written} bytes)"
+        return f"Tool result: Created file {path} ({bytes_written} bytes)"
 
     elif metadata.get("operation") == "file_updated":
         # write_to_file update result
         path = metadata.get("path", "unknown")
         bytes_written = metadata.get("bytes_written", 0)
-        return f"Updated file {path} ({bytes_written} bytes)"
+        return f"Tool result: Updated file {path} ({bytes_written} bytes)"
 
     elif "content" in data:
         # read_file result
         content = str(data["content"])
-        return f"File content ({len(content)} chars): {content[:100]}..."
+        path = metadata.get("path", "unknown file")
+        return f"Tool result: Read {path} ({len(content)} chars). Content: {content[:200]}..."
 
     elif "output" in data:
         # execute_command result
         output = str(data["output"])
-        return f"Command output: {output}"
+        command = metadata.get("command", "unknown command")
+        return f"Tool result: Executed '{command}'. Output: {output[:300]}"
 
     else:
         # Generic result
-        return f"Tool completed successfully. Data: {str(data)[:100]}"
+        return f"Tool result: Operation completed successfully. Data: {str(data)[:100]}"
 
 def get_tool_risk_level(tool_name: str) -> str:
     """Determine risk level for tool."""
@@ -585,11 +597,9 @@ async def handle_tool_result(session_id: str, message: Dict[str, Any]) -> Dict[s
     # Add tool result to session
     session = await session_manager.get_session(session_id)
     if session:
-        await session.add_tool_result(execution_id, result)
-
         # Simple continuation logic: let the AI decide when to stop
-        # Count recent tool executions to prevent infinite loops
-        recent_tool_count = sum(1 for msg in session.messages[-10:] if msg.role == "tool")
+        # Count recent assistant messages to prevent infinite loops
+        recent_tool_count = sum(1 for msg in session.messages[-10:] if msg.role == "assistant" and "Tool" in msg.content)
 
         # Continue if tool was successful and we haven't hit the safety limit
         should_continue = (
