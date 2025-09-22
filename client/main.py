@@ -9,6 +9,7 @@ import json
 import logging
 import signal
 import sys
+import time
 import uuid
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -16,13 +17,13 @@ from typing import Dict, Any, Optional
 import websockets
 from websockets.exceptions import ConnectionClosed, WebSocketException
 
-from .tools.base import ToolManager
-from .tools.file_ops import ReadFileTool, WriteToFileTool, SearchFilesTool, ListFilesTool, InsertContentTool, SearchAndReplaceTool
-from .tools.command_ops import ExecuteCommandTool, GitOperationTool
-from .security.path_validator import PathValidator, SecurityError
-from .security.command_filter import CommandFilter
-from .security.approval_manager import ApprovalManager, ToolApprovalRequest, ApprovalResponse, ApprovalDecision
-from .config import ClientConfig
+from tools.base import ToolManager
+from tools.file_ops import ReadFileTool, WriteToFileTool, SearchFilesTool, ListFilesTool, InsertContentTool, SearchAndReplaceTool
+from tools.command_ops import ExecuteCommandTool, GitOperationTool
+from security.path_validator import PathValidator, SecurityError
+from security.command_filter import CommandFilter
+from security.approval_manager import ApprovalManager, ToolApprovalRequest, ApprovalResponse, ApprovalDecision
+from config import ClientConfig
 
 # Configure logging
 logging.basicConfig(
