@@ -378,35 +378,42 @@ def parse_tool_calls(content: str) -> list:
 def parse_xml_parameters(xml_content: str) -> dict:
     """Parse parameters from XML tool content."""
     import re
+    import html
+
+    def unescape_content(content: str) -> str:
+        """Unescape HTML entities in content."""
+        if content:
+            return html.unescape(content)
+        return content
 
     params = {}
 
     # Extract path
     path_match = re.search(r'<path>(.*?)</path>', xml_content)
     if path_match:
-        params["path"] = path_match.group(1)
+        params["path"] = unescape_content(path_match.group(1))
 
     # Extract other common parameters
     content_match = re.search(r'<content>(.*?)</content>', xml_content, re.DOTALL)
     if content_match:
-        params["content"] = content_match.group(1)
+        params["content"] = unescape_content(content_match.group(1))
 
     regex_match = re.search(r'<regex>(.*?)</regex>', xml_content)
     if regex_match:
-        params["regex"] = regex_match.group(1)
+        params["regex"] = unescape_content(regex_match.group(1))
 
     command_match = re.search(r'<command>(.*?)</command>', xml_content)
     if command_match:
-        params["command"] = command_match.group(1)
+        params["command"] = unescape_content(command_match.group(1))
 
     # Extract search and replace parameters
     search_match = re.search(r'<search>(.*?)</search>', xml_content, re.DOTALL)
     if search_match:
-        params["search"] = search_match.group(1)
+        params["search"] = unescape_content(search_match.group(1))
 
     replace_match = re.search(r'<replace>(.*?)</replace>', xml_content, re.DOTALL)
     if replace_match:
-        params["replace"] = replace_match.group(1)
+        params["replace"] = unescape_content(replace_match.group(1))
 
     return params
 
