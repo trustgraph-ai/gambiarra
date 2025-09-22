@@ -210,6 +210,14 @@ async def test_integration():
                             elif chunk.get("content"):
                                 print(f"🧠 AI: {chunk['content'][:50]}...")
 
+                        # Check for errors
+                        elif msg.get("type") == "error":
+                            error = msg.get("error", {})
+                            print(f"❌ Server error: {error.get('code', 'UNKNOWN')} - {error.get('message', 'No message')}")
+                            if error.get("details"):
+                                print(f"   Details: {error['details']}")
+                            break
+
                     except asyncio.TimeoutError:
                         timeout_count += 1
                         if timeout_count >= max_timeout:
