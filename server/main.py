@@ -32,6 +32,9 @@ websocket_manager = WebSocketManager()
 session_manager = SessionManager()
 ai_provider_manager = AIProviderManager()
 
+# Store pending tool requests
+pending_tool_requests = {}
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
@@ -397,6 +400,9 @@ async def request_tool_approval(session_id: str, tool_call: dict, websocket: Web
     """Request user approval for tool execution."""
     request_id = str(uuid.uuid4())
 
+    # Store the tool call for later execution
+    pending_tool_requests[request_id] = tool_call
+
     approval_request = {
         "type": "tool_approval_request",
         "session_id": session_id,
@@ -433,12 +439,21 @@ async def handle_tool_approval(session_id: str, message: Dict[str, Any]) -> Dict
     logger.info(f"🔐 Tool approval {decision} for request {request_id}")
 
     if decision == "approved":
-        # We need to retrieve the original tool request
-        # For now, let's extract the tool info from the approval request
-        # In a real implementation, we'd store the pending request
+        # Retrieve the stored tool request
+        tool_call = pending_tool_requests.get(request_id)
+        if not tool_call:
+            logger.error(f"❌ No pending tool request found for {request_id}")
+            return {
+                "type": "error",
+                "error": {
+                    "code": "TOOL_REQUEST_NOT_FOUND",
+                    "message": f"No pending tool request for {request_id}"
+                }
+            }
 
-        # The tool info should be in the original approval request
-        # For the test, we'll construct it from the known pattern
+        # Remove from pending
+        pending_tool_requests.pop(request_id, None)
+
         execution_id = str(uuid.uuid4())
 
         return {
@@ -446,13 +461,14 @@ async def handle_tool_approval(session_id: str, message: Dict[str, Any]) -> Dict
             "session_id": session_id,
             "execution_id": execution_id,
             "tool": {
-                "name": "read_file",
-                "parameters": {
-                    "path": "test.py"  # This should come from the parsed tool call
-                }
+                "name": tool_call["name"],
+                "parameters": tool_call["parameters"]
             }
         }
     else:
+        # Remove from pending even if denied
+        pending_tool_requests.pop(request_id, None)
+
         return {
             "type": "tool_denied",
             "session_id": session_id,

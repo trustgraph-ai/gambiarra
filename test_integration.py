@@ -126,7 +126,9 @@ async def test_integration():
                 # Collect responses
                 responses = []
                 timeout_count = 0
-                max_timeout = 10  # 10 second timeout
+                max_timeout = 15  # 15 second timeout
+                ai_completed = False
+                tool_executed = False
 
                 while timeout_count < max_timeout:
                     try:
@@ -183,6 +185,10 @@ async def test_integration():
 
                                     await websocket.send(json.dumps(tool_result))
                                     print(f"✅ Tool executed: read {file_path}")
+                                    tool_executed = True
+                                    # Check if we've completed the full flow
+                                    if ai_completed:
+                                        break
 
                                 except Exception as e:
                                     tool_result = {
@@ -206,7 +212,10 @@ async def test_integration():
                             chunk = msg["chunk"]
                             if chunk.get("is_complete"):
                                 print("✅ AI response completed")
-                                break
+                                ai_completed = True
+                                # Check if we've completed the full flow
+                                if tool_executed:
+                                    break
                             elif chunk.get("content"):
                                 print(f"🧠 AI: {chunk['content'][:50]}...")
 
