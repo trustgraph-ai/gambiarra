@@ -143,10 +143,27 @@ class GambiarraClient:
             await self.connect()
             await self.create_session()
 
-            logger.info("🏃 Client running - executing 4-prompt scenario")
+            logger.info("🏃 Client running - ready for interactive prompts")
+            print("\n🤖 Gambiarra Interactive Client")
+            print("=" * 60)
+            print(f"📁 Workspace: {self.config.workspace_root}")
+            print("🔧 Type your prompts and press Enter.")
+            print("📝 Special commands:")
+            print("   'quit', 'exit', 'q' - Exit the client")
+            print("   'help' - Show examples")
+            print("   'status' - Show session info")
+            print("\n💡 Example prompts:")
+            print("   • build hello world app")
+            print("   • read the README.md file")
+            print("   • list all Python files")
+            print("   • change the program to add 2 numbers together")
+            print("   • add Uvicorn framework")
+            print("   • fix the missing host error")
+            print("   • run the tests")
+            print("=" * 60)
 
-            # Execute the 4-prompt scenario
-            await self._run_scenario()
+            # Start interactive mode
+            await self._run_interactive()
 
         except KeyboardInterrupt:
             logger.info("⏹️  Client interrupted by user")
@@ -155,32 +172,54 @@ class GambiarraClient:
         finally:
             await self._cleanup()
 
-    async def _run_scenario(self):
-        """Run the 4-prompt scenario."""
-        prompts = [
-            "build hello world app",
-            "change the program to add 2 numbers together",
-            "add Uvicorn framework",
-            "fix the missing host error"
-        ]
+    async def _run_interactive(self):
+        """Run interactive prompt mode."""
+        import aioconsole
 
-        for i, prompt in enumerate(prompts, 1):
-            print(f"\n🔥 PROMPT {i}: {prompt}")
-            print("=" * 50)
+        prompt_count = 0
 
-            # Send prompt to server
-            await self._send_user_message(prompt)
+        while self.running:
+            try:
+                # Get user input
+                user_input = await aioconsole.ainput("\n🤖 You: ")
 
-            # Wait for complete response including tool execution
-            await self._wait_for_complete_response()
+                # Handle special commands
+                cmd = user_input.lower().strip()
 
-            # Pause between prompts
-            if i < len(prompts):
-                print(f"\n⏸️  Waiting 2 seconds before next prompt...")
-                await asyncio.sleep(2)
+                if cmd in ['quit', 'exit', 'q', '']:
+                    print("👋 Goodbye!")
+                    self.running = False
+                    break
+                elif cmd == 'help':
+                    self._show_help()
+                    continue
+                elif cmd == 'status':
+                    self._show_status()
+                    continue
 
-        print(f"\n🎉 All {len(prompts)} prompts completed!")
-        print("Check your workspace for the generated files.")
+                # Skip empty inputs
+                if not user_input.strip():
+                    continue
+
+                prompt_count += 1
+                print(f"\n🔥 PROMPT {prompt_count}: {user_input}")
+                print("=" * 50)
+
+                # Send prompt to server
+                await self._send_user_message(user_input)
+
+                # Wait for complete response including tool execution
+                await self._wait_for_complete_response()
+
+                print("\n✅ Prompt completed!")
+
+            except EOFError:
+                print("\n👋 Goodbye!")
+                self.running = False
+                break
+            except Exception as e:
+                logger.error(f"❌ Error in interactive mode: {e}")
+                continue
 
     async def _wait_for_complete_response(self):
         """Wait for AI response and tool execution to complete."""
@@ -412,6 +451,41 @@ class GambiarraClient:
                 logger.error(f"❌ Error closing WebSocket: {e}")
 
         logger.info("🧹 Client cleanup completed")
+
+    def _show_help(self):
+        """Show help information."""
+        print("\n💡 Gambiarra Help")
+        print("=" * 40)
+        print("📝 File Operations:")
+        print("   • read [filename] - Read a file")
+        print("   • create [filename] - Create a file")
+        print("   • list files - List files in directory")
+        print("   • search for [pattern] - Search files")
+        print("\n🔧 Development Tasks:")
+        print("   • build hello world app")
+        print("   • add error handling to [file]")
+        print("   • refactor [function] in [file]")
+        print("   • write tests for [file]")
+        print("\n🌐 Web Development:")
+        print("   • add FastAPI framework")
+        print("   • create REST API")
+        print("   • add database connection")
+        print("\n🐛 Debugging:")
+        print("   • fix the [error type] error")
+        print("   • debug [function] in [file]")
+        print("   • run the tests")
+        print("=" * 40)
+
+    def _show_status(self):
+        """Show current status."""
+        print("\n📊 Gambiarra Status")
+        print("=" * 40)
+        print(f"🔌 Connection: {'✅ Connected' if self.websocket else '❌ Disconnected'}")
+        print(f"🎯 Session: {self.session_id or '❌ No session'}")
+        print(f"📁 Workspace: {self.config.workspace_root}")
+        print(f"🏃 Running: {'✅ Yes' if self.running else '❌ No'}")
+        print(f"🔧 Available tools: {len(self.tool_manager.list_tools())}")
+        print("=" * 40)
 
     def send_user_input(self, message: str) -> None:
         """Send user input (for interactive use)."""
