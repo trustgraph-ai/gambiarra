@@ -406,6 +406,8 @@ class GambiarraClient:
 
     async def _request_user_approval(self, request: ToolApprovalRequest) -> ApprovalResponse:
         """Request user approval for tool execution."""
+        import aioconsole
+
         # Simple console-based approval for now
         print(f"\n🔐 APPROVAL REQUEST")
         print(f"Tool: {request.tool_name}")
@@ -414,25 +416,36 @@ class GambiarraClient:
         print(f"Parameters: {json.dumps(request.parameters, indent=2)}")
 
         while True:
-            choice = input("\nApprove? (y/n/m for modify): ").lower().strip()
+            try:
+                choice = await aioconsole.ainput("\nApprove? (y/n/m for modify): ")
+                choice = choice.lower().strip()
 
-            if choice in ['y', 'yes']:
-                return ApprovalResponse(
-                    request_id=request.request_id,
-                    decision=ApprovalDecision.APPROVED
-                )
-            elif choice in ['n', 'no']:
-                feedback = input("Reason for denial (optional): ").strip()
+                if choice in ['y', 'yes']:
+                    return ApprovalResponse(
+                        request_id=request.request_id,
+                        decision=ApprovalDecision.APPROVED
+                    )
+                elif choice in ['n', 'no']:
+                    feedback = await aioconsole.ainput("Reason for denial (optional): ")
+                    feedback = feedback.strip()
+                    return ApprovalResponse(
+                        request_id=request.request_id,
+                        decision=ApprovalDecision.DENIED,
+                        feedback=feedback if feedback else None
+                    )
+                elif choice in ['m', 'modify']:
+                    print("Parameter modification not implemented yet")
+                    continue
+                else:
+                    print("Please enter y/n/m")
+            except Exception as e:
+                logger.error(f"❌ Error getting user input: {e}")
+                # Default to deny for safety
                 return ApprovalResponse(
                     request_id=request.request_id,
                     decision=ApprovalDecision.DENIED,
-                    feedback=feedback if feedback else None
+                    feedback="Error getting user input"
                 )
-            elif choice in ['m', 'modify']:
-                print("Parameter modification not implemented yet")
-                continue
-            else:
-                print("Please enter y/n/m")
 
     async def _handle_command_stream(self, stream_type: str, content: str) -> None:
         """Handle streaming command output."""
