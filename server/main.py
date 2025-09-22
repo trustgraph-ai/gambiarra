@@ -610,7 +610,7 @@ async def handle_tool_result(session_id: str, message: Dict[str, Any]) -> Dict[s
 
         # KiloCode pattern: Continue agentic loop until attempt_completion or no more tools
         # Safety limit to prevent infinite loops
-        recent_tool_count = sum(1 for msg in session.messages[-10:] if msg.role == "assistant" and "Tool result:" in msg.content)
+        recent_tool_count = sum(1 for msg in session.messages[-10:] if msg.role == "assistant" and msg.content and "Tool result:" in msg.content)
 
         if recent_tool_count < 10:  # Increased safety limit
             logger.info(f"🤖 Continuing agentic loop (tool #{recent_tool_count + 1})")
