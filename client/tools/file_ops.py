@@ -37,7 +37,7 @@ class ReadFileTool(FileOperationTool):
         try:
             # Check if file exists
             if not os.path.exists(path):
-                return ToolResult.error(
+                return ToolResult.create_error(
                     "FILE_NOT_FOUND",
                     f"File '{path}' does not exist",
                     {"attempted_path": path}
@@ -53,7 +53,7 @@ class ReadFileTool(FileOperationTool):
             if line_range:
                 start_line, end_line = line_range
                 if start_line < 1 or end_line < start_line or start_line > len(lines):
-                    return ToolResult.error(
+                    return ToolResult.create_error(
                         "INVALID_LINE_RANGE",
                         f"Invalid line range: {line_range}",
                         {"total_lines": len(lines)}
@@ -77,19 +77,19 @@ class ReadFileTool(FileOperationTool):
             )
 
         except UnicodeDecodeError:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "ENCODING_ERROR",
                 "File contains non-UTF-8 content",
                 {"path": path}
             )
         except PermissionError:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "PERMISSION_DENIED",
                 f"Permission denied reading file '{path}'",
                 {"path": path}
             )
         except Exception as e:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "FILE_READ_ERROR",
                 str(e),
                 {"path": path}
@@ -135,7 +135,7 @@ class WriteToFileTool(FileOperationTool):
             # Verify line count if provided
             actual_line_count = len(content.split('\n'))
             if expected_line_count and actual_line_count != expected_line_count:
-                return ToolResult.error(
+                return ToolResult.create_error(
                     "LINE_COUNT_MISMATCH",
                     f"Expected {expected_line_count} lines, got {actual_line_count}",
                     {
@@ -157,13 +157,13 @@ class WriteToFileTool(FileOperationTool):
             )
 
         except PermissionError:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "PERMISSION_DENIED",
                 f"Permission denied writing to '{path}'",
                 {"path": path}
             )
         except Exception as e:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "FILE_WRITE_ERROR",
                 str(e),
                 {"path": path}
@@ -200,7 +200,7 @@ class SearchFilesTool(FileOperationTool):
 
             search_dir = Path(search_path)
             if not search_dir.exists():
-                return ToolResult.error(
+                return ToolResult.create_error(
                     "PATH_NOT_FOUND",
                     f"Search path '{search_path}' does not exist",
                     {"path": search_path}
@@ -256,13 +256,13 @@ class SearchFilesTool(FileOperationTool):
             )
 
         except re.error as e:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "INVALID_REGEX",
                 f"Invalid regex pattern: {e}",
                 {"pattern": regex_pattern}
             )
         except Exception as e:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "SEARCH_ERROR",
                 str(e),
                 {"path": search_path, "pattern": regex_pattern}
@@ -299,14 +299,14 @@ class ListFilesTool(FileOperationTool):
         try:
             dir_path = Path(path)
             if not dir_path.exists():
-                return ToolResult.error(
+                return ToolResult.create_error(
                     "PATH_NOT_FOUND",
                     f"Directory '{path}' does not exist",
                     {"path": path}
                 )
 
             if not dir_path.is_dir():
-                return ToolResult.error(
+                return ToolResult.create_error(
                     "NOT_A_DIRECTORY",
                     f"Path '{path}' is not a directory",
                     {"path": path}
@@ -366,13 +366,13 @@ class ListFilesTool(FileOperationTool):
             )
 
         except PermissionError:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "PERMISSION_DENIED",
                 f"Permission denied accessing directory '{path}'",
                 {"path": path}
             )
         except Exception as e:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "LIST_ERROR",
                 str(e),
                 {"path": path}
@@ -401,7 +401,7 @@ class InsertContentTool(FileOperationTool):
         try:
             file_path = Path(path)
             if not file_path.exists():
-                return ToolResult.error(
+                return ToolResult.create_error(
                     "FILE_NOT_FOUND",
                     f"File '{path}' does not exist",
                     {"path": path}
@@ -413,7 +413,7 @@ class InsertContentTool(FileOperationTool):
 
             # Validate line number
             if line_number < 1 or line_number > len(lines) + 1:
-                return ToolResult.error(
+                return ToolResult.create_error(
                     "INVALID_LINE_NUMBER",
                     f"Line number {line_number} is out of range",
                     {"total_lines": len(lines), "requested_line": line_number}
@@ -443,7 +443,7 @@ class InsertContentTool(FileOperationTool):
             )
 
         except Exception as e:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "INSERT_ERROR",
                 str(e),
                 {"path": path, "line_number": line_number}
@@ -472,7 +472,7 @@ class SearchAndReplaceTool(FileOperationTool):
         try:
             file_path = Path(path)
             if not file_path.exists():
-                return ToolResult.error(
+                return ToolResult.create_error(
                     "FILE_NOT_FOUND",
                     f"File '{path}' does not exist",
                     {"path": path}
@@ -489,7 +489,7 @@ class SearchAndReplaceTool(FileOperationTool):
             replacements_made = original_content.count(search_text)
 
             if replacements_made == 0:
-                return ToolResult.error(
+                return ToolResult.create_error(
                     "SEARCH_TEXT_NOT_FOUND",
                     f"Search text not found in file: '{search_text}'",
                     {"search_text": search_text, "path": path}
@@ -515,7 +515,7 @@ class SearchAndReplaceTool(FileOperationTool):
             )
 
         except Exception as e:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "REPLACE_ERROR",
                 str(e),
                 {"path": path, "search": search_text}

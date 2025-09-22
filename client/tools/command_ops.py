@@ -41,7 +41,7 @@ class ExecuteCommandTool(CommandExecutionTool):
             # Validate working directory
             work_dir = Path(cwd)
             if not work_dir.exists():
-                return ToolResult.error(
+                return ToolResult.create_error(
                     "DIRECTORY_NOT_FOUND",
                     f"Working directory '{cwd}' does not exist",
                     {"cwd": cwd}
@@ -70,13 +70,13 @@ class ExecuteCommandTool(CommandExecutionTool):
             )
 
         except asyncio.TimeoutError:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "COMMAND_TIMEOUT",
                 f"Command timed out after {timeout} seconds",
                 {"command": command, "timeout": timeout}
             )
         except Exception as e:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "COMMAND_ERROR",
                 str(e),
                 {"command": command, "cwd": cwd}
@@ -196,7 +196,7 @@ class GitOperationTool(CommandExecutionTool):
         ]
 
         if operation not in allowed_operations:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "INVALID_GIT_OPERATION",
                 f"Git operation '{operation}' not allowed",
                 {"allowed_operations": allowed_operations}
@@ -210,7 +210,7 @@ class GitOperationTool(CommandExecutionTool):
             # Validate working directory
             work_dir = Path(cwd)
             if not work_dir.exists():
-                return ToolResult.error(
+                return ToolResult.create_error(
                     "DIRECTORY_NOT_FOUND",
                     f"Working directory '{cwd}' does not exist",
                     {"cwd": cwd}
@@ -221,7 +221,7 @@ class GitOperationTool(CommandExecutionTool):
             # Check if it's a Git repository
             git_dir = work_dir / ".git"
             if not git_dir.exists():
-                return ToolResult.error(
+                return ToolResult.create_error(
                     "NOT_A_GIT_REPO",
                     f"Directory '{cwd}' is not a Git repository",
                     {"cwd": cwd}
@@ -252,7 +252,7 @@ class GitOperationTool(CommandExecutionTool):
             )
 
         except Exception as e:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "GIT_ERROR",
                 str(e),
                 {"operation": operation, "cwd": cwd}

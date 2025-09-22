@@ -279,6 +279,9 @@ class GambiarraClient:
             elif message_type == "error":
                 await self._handle_error(message)
 
+            elif message_type == "tool_result_received":
+                await self._handle_tool_result_received(message)
+
             else:
                 logger.warning(f"🤷 Unknown message type: {message_type}")
 
@@ -383,6 +386,12 @@ class GambiarraClient:
         """Handle error message from server."""
         error = message.get("error", {})
         logger.error(f"❌ Server error: {error.get('message', 'Unknown error')}")
+
+    async def _handle_tool_result_received(self, message: Dict[str, Any]) -> None:
+        """Handle tool result received acknowledgment from server."""
+        execution_id = message.get("execution_id", "unknown")
+        status = message.get("status", "unknown")
+        logger.debug(f"✅ Server received tool result for execution {execution_id}: {status}")
 
     async def _send_message(self, message: Dict[str, Any]) -> None:
         """Send message to server."""

@@ -28,7 +28,7 @@ class ToolResult:
         return cls(status="success", data=data, metadata=metadata or {})
 
     @classmethod
-    def error(cls, code: str, message: str, details: Dict[str, Any] = None) -> "ToolResult":
+    def create_error(cls, code: str, message: str, details: Dict[str, Any] = None) -> "ToolResult":
         """Create an error result."""
         return cls(
             status="error",
@@ -41,19 +41,12 @@ class ToolResult:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
-        result = {
+        return {
             "status": self.status,
             "data": self.data,
-            "metadata": self.metadata
+            "metadata": self.metadata,
+            "error": self.error
         }
-
-        # Access the instance attribute directly from __dict__ to avoid classmethod confusion
-        if hasattr(self, '__dict__') and 'error' in self.__dict__:
-            result["error"] = self.__dict__['error']
-        else:
-            result["error"] = None
-
-        return result
 
 
 class BaseTool(ABC):
@@ -162,7 +155,7 @@ class ToolManager:
         """Execute a tool with given parameters."""
         tool = self.get_tool(name)
         if not tool:
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "TOOL_NOT_FOUND",
                 f"Tool '{name}' not found",
                 {"available_tools": self.list_tools()}
@@ -184,7 +177,7 @@ class ToolManager:
 
         except Exception as e:
             logger.error(f"❌ Tool {name} failed: {e}")
-            return ToolResult.error(
+            return ToolResult.create_error(
                 "TOOL_EXECUTION_ERROR",
                 str(e),
                 {"tool": name, "parameters": parameters}
