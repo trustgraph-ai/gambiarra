@@ -15,10 +15,10 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-from websocket_handler import WebSocketManager
-from ai_integration.providers import AIProviderManager
-from session.manager import SessionManager
-from config import ServerConfig
+from server.websocket_handler import WebSocketManager
+from server.ai_integration.providers import AIProviderManager
+from server.session.manager import SessionManager
+from server.config import ServerConfig
 
 # Configure logging
 logging.basicConfig(

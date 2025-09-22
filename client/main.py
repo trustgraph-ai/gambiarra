@@ -17,13 +17,13 @@ from typing import Dict, Any, Optional
 import websockets
 from websockets.exceptions import ConnectionClosed, WebSocketException
 
-from tools.base import ToolManager
-from tools.file_ops import ReadFileTool, WriteToFileTool, SearchFilesTool, ListFilesTool, InsertContentTool, SearchAndReplaceTool
-from tools.command_ops import ExecuteCommandTool, GitOperationTool
-from security.path_validator import PathValidator, SecurityError
-from security.command_filter import CommandFilter
-from security.approval_manager import ApprovalManager, ToolApprovalRequest, ApprovalResponse, ApprovalDecision
-from config import ClientConfig
+from client.tools.base import ToolManager
+from client.tools.file_ops import ReadFileTool, WriteToFileTool, SearchFilesTool, ListFilesTool, InsertContentTool, SearchAndReplaceTool
+from client.tools.command_ops import ExecuteCommandTool, GitOperationTool
+from client.security.path_validator import PathValidator, SecurityError
+from client.security.command_filter import CommandFilter
+from client.security.approval_manager import ApprovalManager, ToolApprovalRequest, ApprovalResponse, ApprovalDecision
+from client.config import ClientConfig
 
 # Configure logging
 logging.basicConfig(
@@ -144,20 +144,23 @@ class GambiarraClient:
             await self.create_session()
 
             logger.info("🏃 Client running - ready to receive messages")
+            print("\n💬 Type your messages and press Enter. Type 'quit' or 'exit' to stop.\n")
+
+            # Start input handling task
+            input_task = asyncio.create_task(self._handle_user_input())
 
             # Message handling loop
-            while self.running:
-                try:
-                    message = await self.websocket.recv()
-                    await self._handle_message(json.loads(message))
+            message_task = asyncio.create_task(self._message_loop())
 
-                except ConnectionClosed:
-                    logger.info("🔌 Connection closed by server")
-                    break
-                except json.JSONDecodeError as e:
-                    logger.error(f"❌ Invalid JSON received: {e}")
-                except Exception as e:
-                    logger.error(f"❌ Error handling message: {e}")
+            # Wait for either task to complete
+            done, pending = await asyncio.wait(
+                [input_task, message_task],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+
+            # Cancel pending tasks
+            for task in pending:
+                task.cancel()
 
         except KeyboardInterrupt:
             logger.info("⏹️  Client interrupted by user")
@@ -165,6 +168,43 @@ class GambiarraClient:
             logger.error(f"❌ Client error: {e}")
         finally:
             await self._cleanup()
+
+    async def _message_loop(self):
+        """Handle incoming WebSocket messages."""
+        while self.running:
+            try:
+                message = await self.websocket.recv()
+                await self._handle_message(json.loads(message))
+
+            except ConnectionClosed:
+                logger.info("🔌 Connection closed by server")
+                break
+            except json.JSONDecodeError as e:
+                logger.error(f"❌ Invalid JSON received: {e}")
+            except Exception as e:
+                logger.error(f"❌ Error handling message: {e}")
+
+    async def _handle_user_input(self):
+        """Handle user input in a separate task."""
+        import aioconsole
+
+        while self.running:
+            try:
+                user_input = await aioconsole.ainput("You: ")
+
+                if user_input.lower().strip() in ['quit', 'exit', 'q']:
+                    print("👋 Goodbye!")
+                    self.running = False
+                    break
+
+                if user_input.strip():
+                    await self._send_user_message(user_input)
+
+            except EOFError:
+                self.running = False
+                break
+            except Exception as e:
+                logger.error(f"❌ Input error: {e}")
 
     async def _handle_message(self, message: Dict[str, Any]) -> None:
         """Handle incoming WebSocket message."""

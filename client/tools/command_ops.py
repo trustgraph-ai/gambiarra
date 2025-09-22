@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional, Callable
 
-from base import CommandExecutionTool, ToolResult
+from client.tools.base import CommandExecutionTool, ToolResult
 
 
 class ExecuteCommandTool(CommandExecutionTool):

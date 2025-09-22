@@ -25,8 +25,8 @@ pip install -r requirements.txt
 
 ```bash
 # Terminal 1: Start the dummy OpenAI server for testing
-cd test-llm
-python main.py
+cd gambiarra
+python run_test_llm.py
 ```
 
 The test LLM server will start at `http://localhost:8001` and provide predictable responses for testing.
@@ -35,8 +35,8 @@ The test LLM server will start at `http://localhost:8001` and provide predictabl
 
 ```bash
 # Terminal 2: Start the main Gambiarra server
-cd server
-python main.py
+cd gambiarra
+python run_server.py
 ```
 
 The server will start at `http://localhost:8000` with WebSocket endpoint at `/ws`.
@@ -45,8 +45,8 @@ The server will start at `http://localhost:8000` with WebSocket endpoint at `/ws
 
 ```bash
 # Terminal 3: Start the client in your project directory
-cd client
-python main.py --workspace /path/to/your/project
+cd gambiarra
+python run_client.py --workspace /path/to/your/project
 ```
 
 ## Architecture Overview

@@ -13,7 +13,7 @@ import aiofiles
 import fnmatch
 import re
 
-from base import FileOperationTool, ToolResult
+from client.tools.base import FileOperationTool, ToolResult
 
 
 class ReadFileTool(FileOperationTool):
