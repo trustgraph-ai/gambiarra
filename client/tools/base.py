@@ -41,12 +41,19 @@ class ToolResult:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
-        return {
+        result = {
             "status": self.status,
             "data": self.data,
-            "metadata": self.metadata,
-            "error": self.error  # This will be the instance attribute, not the classmethod
+            "metadata": self.metadata
         }
+
+        # Access the instance attribute directly from __dict__ to avoid classmethod confusion
+        if hasattr(self, '__dict__') and 'error' in self.__dict__:
+            result["error"] = self.__dict__['error']
+        else:
+            result["error"] = None
+
+        return result
 
 
 class BaseTool(ABC):
