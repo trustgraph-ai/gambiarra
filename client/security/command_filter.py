@@ -96,6 +96,8 @@ class CommandFilter:
             r'^pip\s+(install|list|show)',
             r'^cargo\s+(new|build|test|run|check|init)',
             r'^go\s+(build|test|run|mod)',
+            r'^gcc\s+',
+            r'^clang\s+',
             r'^make\s+(build|test|clean)',
             r'^tsc(\s|$)',
             r'^eslint\s+',

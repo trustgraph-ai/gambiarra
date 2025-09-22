@@ -595,20 +595,35 @@ async def handle_tool_result(session_id: str, message: Dict[str, Any]) -> Dict[s
                 last_user_message = msg.content.lower()
                 break
 
+        # Check if we should continue the conversation
+        # Count recent tool executions to prevent infinite loops
+        recent_tool_count = sum(1 for msg in session.messages[-10:] if msg.role == "tool")
+
         # Continue conversation for compilation-like tasks that typically need multiple steps
         should_continue = (
             last_user_message and
             any(keyword in last_user_message for keyword in ["compile", "build", "run", "execute"]) and
-            result.get("status") == "success"
+            result.get("status") == "success" and
+            recent_tool_count < 3  # Limit to 3 tools max per task
         )
 
-        if should_continue:
+        # Don't continue if compilation was successful (task is likely complete)
+        compilation_completed = (
+            result.get("status") == "success" and
+            "gcc" in str(result.get("data", {}).get("command", ""))
+        )
+
+        if should_continue and not compilation_completed:
             # Add a detailed tool result that AI can understand and act on
             tool_summary = format_tool_result_for_ai(result)
             await session.add_message("assistant", tool_summary)
 
-            logger.info(f"🤖 Continuing conversation for compilation task")
+            logger.info(f"🤖 Continuing conversation for compilation task (tool #{recent_tool_count + 1})")
             await process_ai_response(session_id, session)
+        elif compilation_completed:
+            logger.info(f"🎯 Compilation completed successfully - stopping continuation")
+        else:
+            logger.info(f"🛑 Not continuing conversation (tool count: {recent_tool_count})")
 
     return {
         "type": "tool_result_received",
