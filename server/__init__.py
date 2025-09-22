@@ -1,0 +1,1 @@
+# Gambiarra Server - AI Orchestration and Tool Coordination
