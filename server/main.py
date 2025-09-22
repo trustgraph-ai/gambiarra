@@ -360,7 +360,7 @@ def parse_tool_calls(content: str) -> list:
 
     tool_calls = []
     for tool_name, tool_content in matches:
-        if tool_name in ["read_file", "write_to_file", "search_files", "execute_command", "list_files"]:
+        if tool_name in ["read_file", "write_to_file", "search_files", "execute_command", "list_files", "search_and_replace"]:
             # Parse parameters from XML content
             params = parse_xml_parameters(tool_content)
             tool_calls.append({
@@ -393,6 +393,15 @@ def parse_xml_parameters(xml_content: str) -> dict:
     command_match = re.search(r'<command>(.*?)</command>', xml_content)
     if command_match:
         params["command"] = command_match.group(1)
+
+    # Extract search and replace parameters
+    search_match = re.search(r'<search>(.*?)</search>', xml_content, re.DOTALL)
+    if search_match:
+        params["search"] = search_match.group(1)
+
+    replace_match = re.search(r'<replace>(.*?)</replace>', xml_content, re.DOTALL)
+    if replace_match:
+        params["replace"] = replace_match.group(1)
 
     return params
 

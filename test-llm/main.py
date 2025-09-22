@@ -132,6 +132,63 @@ TEST_RESPONSES = {
                 }
             }
         ]
+    },
+
+    # 4-prompt scenario responses
+    "build_hello_world": {
+        "response": "I'll create a simple hello world application for you.",
+        "tools": [
+            {
+                "name": "write_to_file",
+                "parameters": {
+                    "path": "hello.py",
+                    "content": "#!/usr/bin/env python3\n\ndef main():\n    print(\"Hello, World!\")\n\nif __name__ == \"__main__\":\n    main()\n",
+                    "line_count": 6
+                }
+            }
+        ]
+    },
+
+    "add_numbers": {
+        "response": "I'll modify the program to add two numbers together.",
+        "tools": [
+            {
+                "name": "search_and_replace",
+                "parameters": {
+                    "path": "hello.py",
+                    "search": "def main():\n    print(\"Hello, World!\")",
+                    "replace": "def main():\n    a = 10\n    b = 20\n    result = a + b\n    print(f\"The sum of {a} and {b} is {result}\")"
+                }
+            }
+        ]
+    },
+
+    "add_uvicorn": {
+        "response": "I'll add the Uvicorn framework to create a web API.",
+        "tools": [
+            {
+                "name": "write_to_file",
+                "parameters": {
+                    "path": "app.py",
+                    "content": "#!/usr/bin/env python3\nfrom fastapi import FastAPI\nimport uvicorn\n\napp = FastAPI()\n\n@app.get(\"/\")\ndef read_root():\n    return {\"message\": \"Hello World\"}\n\n@app.get(\"/add/{a}/{b}\")\ndef add_numbers(a: int, b: int):\n    result = a + b\n    return {\"result\": result}\n\ndef main():\n    # Bug: missing host parameter\n    uvicorn.run(app, port=8000)\n\nif __name__ == \"__main__\":\n    main()\n",
+                    "line_count": 18
+                }
+            }
+        ]
+    },
+
+    "fix_uvicorn_bug": {
+        "response": "I can see the issue. The uvicorn.run() call is missing the host parameter. Let me fix that.",
+        "tools": [
+            {
+                "name": "search_and_replace",
+                "parameters": {
+                    "path": "app.py",
+                    "search": "    uvicorn.run(app, port=8000)",
+                    "replace": "    uvicorn.run(app, host=\"0.0.0.0\", port=8000)"
+                }
+            }
+        ]
     }
 }
 
@@ -142,7 +199,18 @@ def detect_intent(messages: List[Message]) -> str:
 
     last_message = messages[-1].content.lower()
 
-    if any(word in last_message for word in ["hello", "hi", "start"]):
+    # Check for 4-prompt scenario keywords
+    if any(word in last_message for word in ["build", "hello world", "hello_world"]):
+        return "build_hello_world"
+    elif any(word in last_message for word in ["add numbers", "add 2 numbers", "two numbers", "add_numbers"]):
+        return "add_numbers"
+    elif any(word in last_message for word in ["uvicorn", "fastapi", "web", "api", "framework"]):
+        return "add_uvicorn"
+    elif any(word in last_message for word in ["fix", "error", "bug", "host", "missing"]):
+        return "fix_uvicorn_bug"
+
+    # Legacy intent detection
+    elif any(word in last_message for word in ["hello", "hi", "start"]):
         return "hello"
     elif any(word in last_message for word in ["read", "show", "display", "content"]):
         return "read_file"
@@ -175,6 +243,8 @@ def generate_tool_calls(tools: List[Dict[str, Any]]) -> str:
             xml = f"<search_files>\n<path>{params['path']}</path>\n<regex>{params['regex']}</regex>\n<file_pattern>{params['file_pattern']}</file_pattern>\n</search_files>"
         elif name == "execute_command":
             xml = f"<execute_command>\n<command>{params['command']}</command>\n<cwd>{params['cwd']}</cwd>\n</execute_command>"
+        elif name == "search_and_replace":
+            xml = f"<search_and_replace>\n<path>{params['path']}</path>\n<search>{params['search']}</search>\n<replace>{params['replace']}</replace>\n</search_and_replace>"
         else:
             xml = f"<{name}>\n"
             for key, value in params.items():

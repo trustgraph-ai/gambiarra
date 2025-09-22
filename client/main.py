@@ -143,24 +143,10 @@ class GambiarraClient:
             await self.connect()
             await self.create_session()
 
-            logger.info("🏃 Client running - ready to receive messages")
-            print("\n💬 Type your messages and press Enter. Type 'quit' or 'exit' to stop.\n")
+            logger.info("🏃 Client running - executing 4-prompt scenario")
 
-            # Start input handling task
-            input_task = asyncio.create_task(self._handle_user_input())
-
-            # Message handling loop
-            message_task = asyncio.create_task(self._message_loop())
-
-            # Wait for either task to complete
-            done, pending = await asyncio.wait(
-                [input_task, message_task],
-                return_when=asyncio.FIRST_COMPLETED
-            )
-
-            # Cancel pending tasks
-            for task in pending:
-                task.cancel()
+            # Execute the 4-prompt scenario
+            await self._run_scenario()
 
         except KeyboardInterrupt:
             logger.info("⏹️  Client interrupted by user")
@@ -169,42 +155,68 @@ class GambiarraClient:
         finally:
             await self._cleanup()
 
-    async def _message_loop(self):
-        """Handle incoming WebSocket messages."""
+    async def _run_scenario(self):
+        """Run the 4-prompt scenario."""
+        prompts = [
+            "build hello world app",
+            "change the program to add 2 numbers together",
+            "add Uvicorn framework",
+            "fix the missing host error"
+        ]
+
+        for i, prompt in enumerate(prompts, 1):
+            print(f"\n🔥 PROMPT {i}: {prompt}")
+            print("=" * 50)
+
+            # Send prompt to server
+            await self._send_user_message(prompt)
+
+            # Wait for complete response including tool execution
+            await self._wait_for_complete_response()
+
+            # Pause between prompts
+            if i < len(prompts):
+                print(f"\n⏸️  Waiting 2 seconds before next prompt...")
+                await asyncio.sleep(2)
+
+        print(f"\n🎉 All {len(prompts)} prompts completed!")
+        print("Check your workspace for the generated files.")
+
+    async def _wait_for_complete_response(self):
+        """Wait for AI response and tool execution to complete."""
+        ai_completed = False
+        tools_executed = 0
+        expected_tools = 0
+
         while self.running:
             try:
-                message = await self.websocket.recv()
-                await self._handle_message(json.loads(message))
+                message = await asyncio.wait_for(self.websocket.recv(), timeout=30.0)
+                msg = json.loads(message)
 
+                await self._handle_message(msg)
+
+                # Track completion
+                if msg.get("type") == "tool_approval_request":
+                    expected_tools += 1
+                elif msg.get("type") == "ai_response_chunk":
+                    chunk = msg.get("chunk", {})
+                    if chunk.get("is_complete"):
+                        ai_completed = True
+                        print("✅ AI response completed")
+                        if expected_tools == 0:  # No tools expected
+                            break
+                elif msg.get("type") == "tool_result_received":
+                    tools_executed += 1
+                    print(f"✅ Tool {tools_executed}/{expected_tools} completed")
+                    if ai_completed and tools_executed >= expected_tools:
+                        break
+
+            except asyncio.TimeoutError:
+                logger.warning("⏰ Timeout waiting for response")
+                break
             except ConnectionClosed:
-                logger.info("🔌 Connection closed by server")
+                logger.info("🔌 Connection closed")
                 break
-            except json.JSONDecodeError as e:
-                logger.error(f"❌ Invalid JSON received: {e}")
-            except Exception as e:
-                logger.error(f"❌ Error handling message: {e}")
-
-    async def _handle_user_input(self):
-        """Handle user input in a separate task."""
-        import aioconsole
-
-        while self.running:
-            try:
-                user_input = await aioconsole.ainput("You: ")
-
-                if user_input.lower().strip() in ['quit', 'exit', 'q']:
-                    print("👋 Goodbye!")
-                    self.running = False
-                    break
-
-                if user_input.strip():
-                    await self._send_user_message(user_input)
-
-            except EOFError:
-                self.running = False
-                break
-            except Exception as e:
-                logger.error(f"❌ Input error: {e}")
 
     async def _handle_message(self, message: Dict[str, Any]) -> None:
         """Handle incoming WebSocket message."""
@@ -246,9 +258,7 @@ class GambiarraClient:
         """Handle session creation confirmation."""
         self.session_id = message.get("session_id")
         logger.info(f"🎯 Session created: {self.session_id}")
-
-        # Send a test message
-        await self._send_user_message("Hello! I'm ready to help you with coding tasks.")
+        print(f"🎯 Session created: {self.session_id}")
 
     async def _handle_tool_approval_request(self, message: Dict[str, Any]) -> None:
         """Handle tool approval request from server."""
