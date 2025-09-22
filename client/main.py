@@ -119,8 +119,8 @@ class GambiarraClient:
         try:
             session_config = {
                 "working_directory": self.config.workspace_root,
-                "ai_provider": "test",  # Use test provider for now
-                "model": "gpt-4",
+                "ai_provider": self.config.ai_provider,
+                "model": self.config.ai_model,
                 "auto_approve_reads": self.config.auto_approve_reads,
                 "require_approval_for_writes": True,
                 "max_concurrent_file_reads": 5
@@ -147,6 +147,7 @@ class GambiarraClient:
             print("\n🤖 Gambiarra Interactive Client")
             print("=" * 60)
             print(f"📁 Workspace: {self.config.workspace_root}")
+            print(f"🤖 AI Provider: {self.config.ai_provider} ({self.config.ai_model})")
             print("🔧 Type your prompts and press Enter.")
             print("📝 Special commands:")
             print("   'quit', 'exit', 'q' - Exit the client")
@@ -513,6 +514,8 @@ async def main():
     parser = argparse.ArgumentParser(description="Gambiarra AI Coding Assistant Client")
     parser.add_argument("--workspace", "-w", default=".", help="Workspace root directory")
     parser.add_argument("--server", "-s", default="ws://localhost:8000/ws", help="Server WebSocket URL")
+    parser.add_argument("--provider", "-p", choices=["test", "openai", "trustgraph"], default="test", help="AI provider to use")
+    parser.add_argument("--model", "-m", default="gpt-4", help="AI model to use")
     parser.add_argument("--debug", "-d", action="store_true", help="Enable debug logging")
 
     args = parser.parse_args()
@@ -523,7 +526,9 @@ async def main():
     # Create client config
     config = ClientConfig(
         server_url=args.server,
-        workspace_root=args.workspace
+        workspace_root=args.workspace,
+        ai_provider=args.provider,
+        ai_model=args.model
     )
 
     # Create and run client

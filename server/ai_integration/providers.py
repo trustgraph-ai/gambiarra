@@ -10,6 +10,13 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Any, AsyncIterator, Optional
 import aiohttp
 
+# Import TrustGraph API
+try:
+    from trustgraph.api import Api
+    TRUSTGRAPH_AVAILABLE = True
+except ImportError:
+    TRUSTGRAPH_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -233,19 +240,113 @@ class OpenAIProvider(AIProvider):
             await self.session.close()
 
 
+class TrustGraphProvider(AIProvider):
+    """TrustGraph API provider."""
+
+    def __init__(self, api_key: str = "", base_url: str = "http://localhost:8088/", model: str = "default"):
+        super().__init__(api_key, base_url, model)
+        self.session = None
+        self.flow_id = model  # Use model as flow ID for TrustGraph
+
+    async def _get_session(self) -> aiohttp.ClientSession:
+        """Get or create HTTP session."""
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+        return self.session
+
+    async def stream_completion(self, messages: List[Dict[str, str]]) -> AsyncIterator[str]:
+        """Stream completion from TrustGraph."""
+        if not TRUSTGRAPH_AVAILABLE:
+            yield "Error: TrustGraph API not available. Please install trustgraph package."
+            return
+
+        try:
+            # Extract system and user messages
+            system_msg = ""
+            user_msg = ""
+
+            for msg in messages:
+                if msg.get("role") == "system":
+                    system_msg = msg.get("content", "")
+                elif msg.get("role") == "user":
+                    user_msg = msg.get("content", "")
+
+            # Create TrustGraph API instance
+            api = Api(url=self.base_url)
+
+            # Call text completion
+            response = api.flow().id(self.flow_id).text_completion(
+                system=system_msg,
+                prompt=user_msg
+            )
+
+            # Yield the complete response
+            yield response
+
+        except Exception as e:
+            logger.error(f"❌ TrustGraph provider error: {e}")
+            yield f"Error communicating with TrustGraph: {e}"
+
+    async def health_check(self) -> Dict[str, Any]:
+        """Check TrustGraph health."""
+        if not TRUSTGRAPH_AVAILABLE:
+            return {
+                "status": "unavailable",
+                "provider": "trustgraph",
+                "error": "TrustGraph API not installed"
+            }
+
+        try:
+            # Simple health check - try to create API instance
+            api = Api(url=self.base_url)
+            # You could add a simple API call here if TrustGraph has a health endpoint
+
+            return {
+                "status": "healthy",
+                "provider": "trustgraph",
+                "flow_id": self.flow_id
+            }
+
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "provider": "trustgraph",
+                "error": str(e)
+            }
+
+    async def close(self):
+        """Close HTTP session."""
+        if self.session:
+            await self.session.close()
+
+
 class AIProviderManager:
     """Manages multiple AI providers."""
 
-    def __init__(self):
+    def __init__(self, default_provider: str = "test"):
         self.providers: Dict[str, AIProvider] = {}
-        self.default_provider = "test"
+        self.default_provider = default_provider
 
-    async def initialize(self):
+    async def initialize(self, openai_api_key: str = None, trustgraph_url: str = None, trustgraph_flow: str = None):
         """Initialize AI providers."""
         # Initialize test provider (always available)
         self.providers["test"] = TestAIProvider()
 
-        logger.info("✅ AI providers initialized")
+        # Initialize OpenAI provider if API key provided
+        if openai_api_key:
+            self.providers["openai"] = OpenAIProvider(api_key=openai_api_key)
+            logger.info("✅ OpenAI provider initialized")
+
+        # Initialize TrustGraph provider if URL provided
+        if trustgraph_url:
+            flow_id = trustgraph_flow or "default"
+            self.providers["trustgraph"] = TrustGraphProvider(
+                base_url=trustgraph_url,
+                model=flow_id
+            )
+            logger.info(f"✅ TrustGraph provider initialized (flow: {flow_id})")
+
+        logger.info(f"✅ AI providers initialized: {list(self.providers.keys())}")
 
     def add_provider(self, name: str, provider: AIProvider):
         """Add a new provider."""

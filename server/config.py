@@ -15,7 +15,17 @@ class ServerConfig:
     port: int = 8000
 
     # AI Provider settings
-    ai_provider: str = "test"  # test, openai, anthropic, google
+    ai_provider: str = "test"  # test, openai, trustgraph
+
+    # OpenAI settings
+    openai_api_key: Optional[str] = None
+    openai_model: str = "gpt-4"
+
+    # TrustGraph settings
+    trustgraph_url: Optional[str] = None
+    trustgraph_flow: str = "default"
+
+    # Legacy settings (for backward compatibility)
     api_key: Optional[str] = None
     api_base_url: Optional[str] = None
     model: str = "gpt-4"
@@ -39,6 +49,16 @@ class ServerConfig:
         self.port = int(os.getenv("GAMBIARRA_PORT", self.port))
 
         self.ai_provider = os.getenv("GAMBIARRA_AI_PROVIDER", self.ai_provider)
+
+        # Load OpenAI settings
+        self.openai_api_key = os.getenv("OPENAI_API_KEY", self.openai_api_key)
+        self.openai_model = os.getenv("GAMBIARRA_OPENAI_MODEL", self.openai_model)
+
+        # Load TrustGraph settings
+        self.trustgraph_url = os.getenv("GAMBIARRA_TRUSTGRAPH_URL", self.trustgraph_url)
+        self.trustgraph_flow = os.getenv("GAMBIARRA_TRUSTGRAPH_FLOW", self.trustgraph_flow)
+
+        # Legacy settings (for backward compatibility)
         self.api_key = os.getenv("GAMBIARRA_API_KEY", self.api_key)
         self.api_base_url = os.getenv("GAMBIARRA_API_BASE_URL", self.api_base_url)
         self.model = os.getenv("GAMBIARRA_MODEL", self.model)
@@ -48,10 +68,14 @@ class ServerConfig:
 
         self.log_level = os.getenv("GAMBIARRA_LOG_LEVEL", self.log_level)
 
-        # Set defaults for test provider
+        # Set defaults for legacy compatibility
         if self.ai_provider == "test":
             self.api_base_url = self.api_base_url or "http://localhost:8001/v1"
             self.api_key = self.api_key or "test-key"
+
+        # Set default TrustGraph URL if not specified
+        if not self.trustgraph_url:
+            self.trustgraph_url = "http://localhost:8088/"
 
         # Parse allowed origins
         origins_env = os.getenv("GAMBIARRA_ALLOWED_ORIGINS")

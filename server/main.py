@@ -27,10 +27,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Global managers
+# Global config and managers
+config = ServerConfig()
 websocket_manager = WebSocketManager()
 session_manager = SessionManager()
-ai_provider_manager = AIProviderManager()
+ai_provider_manager = AIProviderManager(default_provider=config.ai_provider)
 
 # Store pending tool requests
 pending_tool_requests = {}
@@ -40,8 +41,12 @@ async def lifespan(app: FastAPI):
     """Application lifespan events."""
     logger.info("🚀 Starting Gambiarra Server...")
 
-    # Initialize AI providers
-    await ai_provider_manager.initialize()
+    # Initialize AI providers with configuration
+    await ai_provider_manager.initialize(
+        openai_api_key=config.openai_api_key,
+        trustgraph_url=config.trustgraph_url,
+        trustgraph_flow=config.trustgraph_flow
+    )
     logger.info("✅ AI providers initialized")
 
     yield
@@ -505,11 +510,19 @@ async def handle_tool_result(session_id: str, message: Dict[str, Any]) -> Dict[s
     }
 
 if __name__ == "__main__":
-    config = ServerConfig()
-
     print("🚀 Starting Gambiarra Server...")
     print(f"📍 WebSocket endpoint: ws://{config.host}:{config.port}/ws")
     print(f"🌐 Health check: http://{config.host}:{config.port}/health")
+    print(f"🤖 Default AI provider: {config.ai_provider}")
+
+    # Show available providers based on configuration
+    available_providers = ["test"]
+    if config.openai_api_key:
+        available_providers.append("openai")
+    if config.trustgraph_url:
+        available_providers.append("trustgraph")
+    print(f"🔌 Available providers: {', '.join(available_providers)}")
+
     print("🔧 Configure your Gambiarra client to connect to this server")
 
     uvicorn.run(
