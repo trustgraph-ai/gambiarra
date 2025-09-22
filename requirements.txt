@@ -17,7 +17,7 @@ python-dotenv>=1.0.0
 
 # File operations and security
 pathlib2>=2.3.7
-fnmatch2>=0.1.0
+fnmatch2>=0.0.8
 watchdog>=3.0.0
 
 # Development and testing
