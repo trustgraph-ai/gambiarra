@@ -351,6 +351,8 @@ WORKFLOW: When asked to work with files or code:
 2. Use <read_file> to examine relevant files if needed
 3. Then perform the requested operation using appropriate tools
 
+IMPORTANT: You can use multiple tools in a single response! For compilation tasks, use both list_files AND execute_command in the same response.
+
 NEVER ask the user what files exist - always use <list_files> to discover files yourself!
 
 Available tools (use exactly this XML format):
@@ -372,11 +374,11 @@ int main() {
 - To compile existing C code: First list files: <list_files><path>.</path><recursive>false</recursive></list_files>
   Then compile: <execute_command><command>gcc filename.c -o filename</command></execute_command>
 
-- When asked "compile the C code in workspace":
-  1. <list_files><path>.</path><recursive>false</recursive></list_files>
-  2. Look for .c files in the results, then immediately: <execute_command><command>gcc filename.c -o filename</command></execute_command>
+- When asked "compile the C code in workspace", use multiple tools in one response:
+  <list_files><path>.</path><recursive>false</recursive></list_files>
+  <execute_command><command>gcc hello_world.c -o hello_world</command></execute_command>
 
-CRITICAL: After using list_files, immediately proceed to compilation based on what you expect to find. Don't wait or repeat the same tool.
+CRITICAL: Use multiple tools in a single response when the task requires it! Don't stop after the first tool.
 
 Always use tools to perform the actual work. Be helpful and thorough."""
 
@@ -535,6 +537,32 @@ async def handle_tool_result(session_id: str, message: Dict[str, Any]) -> Dict[s
     session = await session_manager.get_session(session_id)
     if session:
         await session.add_tool_result(execution_id, result)
+
+        # Check if we should continue the conversation
+        # Only continue if the original user message suggests an incomplete task
+        last_user_message = None
+        for msg in reversed(session.messages):
+            if msg.role == "user":
+                last_user_message = msg.content.lower()
+                break
+
+        # Continue conversation for compilation-like tasks that typically need multiple steps
+        should_continue = (
+            last_user_message and
+            any(keyword in last_user_message for keyword in ["compile", "build", "run", "execute"]) and
+            result.get("status") == "success"
+        )
+
+        if should_continue:
+            # Add a brief tool result summary to help AI understand what happened
+            tool_summary = f"Tool {execution_id} completed successfully."
+            if result.get("data"):
+                tool_summary += f" Result: {str(result['data'])[:200]}"  # First 200 chars
+
+            await session.add_message("assistant", tool_summary)
+
+            logger.info(f"🤖 Continuing conversation for compilation task")
+            await process_ai_response(session_id, session)
 
     return {
         "type": "tool_result_received",
