@@ -469,6 +469,55 @@ async def request_tool_approval(session_id: str, tool_call: dict, websocket: Web
     await websocket.send_text(json.dumps(approval_request))
     logger.info(f"🔐 Requested approval for {tool_call['name']} in session {session_id}")
 
+def format_tool_result_for_ai(result: Dict[str, Any]) -> str:
+    """Format tool result in a way AI can understand and act on."""
+    if result.get("status") != "success":
+        return f"Tool failed: {result.get('error', 'Unknown error')}"
+
+    data = result.get("data", {})
+    metadata = result.get("metadata", {})
+
+    # Format based on what kind of operation was performed
+    if "files" in data and "directories" in data:
+        # list_files result
+        files = data["files"]
+        if not files:
+            return "No files found in the workspace."
+
+        file_list = []
+        for file_info in files:
+            name = file_info.get("name", "unknown")
+            size = file_info.get("size", 0)
+            file_list.append(f"{name} ({size} bytes)")
+
+        return f"Found files: {', '.join(file_list)}"
+
+    elif metadata.get("operation") == "file_created":
+        # write_to_file result
+        path = metadata.get("path", "unknown")
+        bytes_written = metadata.get("bytes_written", 0)
+        return f"Created file {path} ({bytes_written} bytes)"
+
+    elif metadata.get("operation") == "file_updated":
+        # write_to_file update result
+        path = metadata.get("path", "unknown")
+        bytes_written = metadata.get("bytes_written", 0)
+        return f"Updated file {path} ({bytes_written} bytes)"
+
+    elif "content" in data:
+        # read_file result
+        content = str(data["content"])
+        return f"File content ({len(content)} chars): {content[:100]}..."
+
+    elif "output" in data:
+        # execute_command result
+        output = str(data["output"])
+        return f"Command output: {output}"
+
+    else:
+        # Generic result
+        return f"Tool completed successfully. Data: {str(data)[:100]}"
+
 def get_tool_risk_level(tool_name: str) -> str:
     """Determine risk level for tool."""
     high_risk = ["write_to_file", "execute_command"]
@@ -554,11 +603,8 @@ async def handle_tool_result(session_id: str, message: Dict[str, Any]) -> Dict[s
         )
 
         if should_continue:
-            # Add a brief tool result summary to help AI understand what happened
-            tool_summary = f"Tool {execution_id} completed successfully."
-            if result.get("data"):
-                tool_summary += f" Result: {str(result['data'])[:200]}"  # First 200 chars
-
+            # Add a detailed tool result that AI can understand and act on
+            tool_summary = format_tool_result_for_ai(result)
             await session.add_message("assistant", tool_summary)
 
             logger.info(f"🤖 Continuing conversation for compilation task")

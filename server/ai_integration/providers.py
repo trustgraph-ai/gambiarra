@@ -261,23 +261,28 @@ class TrustGraphProvider(AIProvider):
             return
 
         try:
-            # Extract system and user messages
+            # Build conversation context for TrustGraph
             system_msg = ""
-            user_msg = ""
+            conversation_context = []
 
             for msg in messages:
                 if msg.get("role") == "system":
                     system_msg = msg.get("content", "")
-                elif msg.get("role") == "user":
-                    user_msg = msg.get("content", "")
+                else:
+                    role = msg.get("role", "")
+                    content = msg.get("content", "")
+                    conversation_context.append(f"{role}: {content}")
+
+            # Combine conversation into a single prompt for TrustGraph
+            full_prompt = "\n\n".join(conversation_context)
 
             # Create TrustGraph API instance
             api = Api(url=self.base_url)
 
-            # Call text completion
+            # Call text completion with full conversation context
             response = api.flow().id(self.flow_id).text_completion(
                 system=system_msg,
-                prompt=user_msg
+                prompt=full_prompt
             )
 
             # Yield the complete response
