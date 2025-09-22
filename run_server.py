@@ -11,5 +11,19 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Import and run the server
 if __name__ == "__main__":
-    from server import main
-    # The server main.py runs when imported
+    # Change to the server directory temporarily for proper imports
+    original_dir = os.getcwd()
+    server_dir = os.path.join(os.path.dirname(__file__), "server")
+
+    try:
+        os.chdir(server_dir)
+
+        # Now import and run the server main
+        import sys
+        sys.path.insert(0, server_dir)
+
+        # Execute the server main.py
+        exec(open("main.py").read())
+
+    finally:
+        os.chdir(original_dir)

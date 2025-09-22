@@ -303,12 +303,29 @@ class GambiarraClient:
         result = await self.tool_manager.execute_tool(tool_name, parameters)
 
         # Send result back to server
-        await self._send_message({
-            "type": "tool_result",
-            "session_id": self.session_id,
-            "execution_id": execution_id,
-            "result": result.to_dict()
-        })
+        try:
+            result_dict = result.to_dict()
+            await self._send_message({
+                "type": "tool_result",
+                "session_id": self.session_id,
+                "execution_id": execution_id,
+                "result": result_dict
+            })
+        except Exception as e:
+            logger.error(f"❌ Error serializing tool result: {e}")
+            logger.error(f"Result type: {type(result)}")
+            logger.error(f"Result dict: {result.to_dict()}")
+            # Send a simplified result
+            await self._send_message({
+                "type": "tool_result",
+                "session_id": self.session_id,
+                "execution_id": execution_id,
+                "result": {
+                    "status": result.status,
+                    "data": str(result.data) if result.data else None,
+                    "metadata": {}
+                }
+            })
 
         logger.info(f"📤 Tool result sent: {result.status}")
 

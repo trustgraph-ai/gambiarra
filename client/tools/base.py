@@ -47,8 +47,10 @@ class ToolResult:
             "metadata": self.metadata
         }
 
-        if self.error:
-            result["error"] = self.error
+        # Use getattr to avoid confusion with classmethod
+        error_data = getattr(self, '__dict__', {}).get('error')
+        if error_data:
+            result["error"] = error_data
 
         return result
 
