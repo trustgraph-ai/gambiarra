@@ -66,6 +66,10 @@ class ReadFileTool(FileOperationTool):
                 result_content = content
                 read_lines = "all"
 
+            # Track file read in context tracker
+            if hasattr(self.security_manager, 'track_file_read'):
+                self.security_manager.track_file_read(path, result_content)
+
             return ToolResult.success(
                 data=result_content,
                 metadata={
@@ -143,6 +147,10 @@ class WriteToFileTool(FileOperationTool):
                         "actual": actual_line_count
                     }
                 )
+
+            # Track file write in context tracker
+            if hasattr(self.security_manager, 'track_file_write'):
+                self.security_manager.track_file_write(path, content)
 
             operation = "file_created" if not backup_created else "file_updated"
 
@@ -431,6 +439,10 @@ class InsertContentTool(FileOperationTool):
             async with aiofiles.open(path, 'w', encoding='utf-8') as file:
                 await file.write(new_content)
 
+            # Track file write in context tracker
+            if hasattr(self.security_manager, 'track_file_write'):
+                self.security_manager.track_file_write(path, new_content)
+
             return ToolResult.success(
                 metadata={
                     "operation": "content_inserted",
@@ -502,6 +514,10 @@ class SearchAndReplaceTool(FileOperationTool):
             # Write new content
             async with aiofiles.open(path, 'w', encoding='utf-8') as file:
                 await file.write(new_content)
+
+            # Track file write in context tracker
+            if hasattr(self.security_manager, 'track_file_write'):
+                self.security_manager.track_file_write(path, new_content)
 
             return ToolResult.success(
                 metadata={

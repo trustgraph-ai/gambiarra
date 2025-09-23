@@ -18,6 +18,7 @@ import uvicorn
 from server.websocket_handler import WebSocketManager
 from server.ai_integration.providers import AIProviderManager
 from server.session.manager import SessionManager
+from server.tools.mode_filter import ToolModeFilter, OperatingMode
 from server.config import ServerConfig
 
 # Configure logging
@@ -32,6 +33,7 @@ config = ServerConfig()
 websocket_manager = WebSocketManager()
 session_manager = SessionManager()
 ai_provider_manager = AIProviderManager(default_provider=config.ai_provider)
+tool_mode_filter = ToolModeFilter()
 
 # Store pending tool requests
 pending_tool_requests = {}
@@ -118,6 +120,59 @@ async def list_sessions():
     return {
         "active_sessions": session_manager.list_sessions(),
         "count": session_manager.active_session_count()
+    }
+
+@app.get("/modes")
+async def get_available_modes():
+    """Get available operating modes."""
+    return {
+        "available_modes": tool_mode_filter.get_available_modes(),
+        "default_mode": "code"
+    }
+
+@app.get("/sessions/{session_id}/mode")
+async def get_session_mode(session_id: str):
+    """Get operating mode for a specific session."""
+    session = session_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    return {
+        "session_id": session_id,
+        "operating_mode": session.config.operating_mode,
+        "mode_description": tool_mode_filter.get_mode_description(OperatingMode(session.config.operating_mode))
+    }
+
+@app.post("/sessions/{session_id}/mode")
+async def set_session_mode(session_id: str, request: dict):
+    """Set operating mode for a specific session."""
+    session = session_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    new_mode = request.get("mode")
+    if not new_mode:
+        raise HTTPException(status_code=400, detail="Mode is required")
+
+    try:
+        operating_mode = OperatingMode(new_mode)
+    except ValueError:
+        available_modes = [mode.value for mode in OperatingMode]
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid mode '{new_mode}'. Available modes: {available_modes}"
+        )
+
+    # Update session mode
+    session.config.operating_mode = new_mode
+    logger.info(f"🎯 Session {session_id} mode changed to {new_mode}")
+
+    return {
+        "session_id": session_id,
+        "old_mode": session.config.operating_mode,
+        "new_mode": new_mode,
+        "mode_description": tool_mode_filter.get_mode_description(operating_mode),
+        "allowed_tools": list(tool_mode_filter.get_allowed_tools_for_mode(operating_mode))
     }
 
 @app.websocket("/ws")
@@ -448,8 +503,46 @@ async def request_tool_approval(session_id: str, tool_call: dict, websocket: Web
     """Request user approval for tool execution."""
     request_id = str(uuid.uuid4())
 
+    # Get session to check operating mode
+    session = session_manager.get_session(session_id)
+    if not session:
+        logger.error(f"❌ Session {session_id} not found for tool approval")
+        return
+
+    # Get operating mode from session
+    operating_mode_str = session.config.operating_mode
+    try:
+        operating_mode = OperatingMode(operating_mode_str)
+    except ValueError:
+        logger.warning(f"Unknown operating mode '{operating_mode_str}', defaulting to CODE")
+        operating_mode = OperatingMode.CODE
+
+    # Apply mode-based filtering
+    filter_result = tool_mode_filter.filter_tool_call(
+        tool_call["name"],
+        tool_call["parameters"],
+        operating_mode
+    )
+
+    if not filter_result["allowed"]:
+        # Tool is blocked by mode filter - send error to client
+        error_response = {
+            "type": "tool_approval_response",
+            "session_id": session_id,
+            "request_id": request_id,
+            "decision": "denied",
+            "feedback": f"Tool blocked by {operating_mode_str} mode: {filter_result['reason']}",
+            "modified_parameters": {}
+        }
+        await websocket.send_text(json.dumps(error_response))
+        return
+
     # Store the tool call for later execution
     pending_tool_requests[request_id] = tool_call
+
+    # Get risk level (potentially modified by mode)
+    original_risk = get_tool_risk_level(tool_call["name"])
+    final_risk = filter_result["modified_risk"] or original_risk
 
     approval_request = {
         "type": "tool_approval_request",
@@ -458,8 +551,8 @@ async def request_tool_approval(session_id: str, tool_call: dict, websocket: Web
         "tool": {
             "name": tool_call["name"],
             "parameters": tool_call["parameters"],
-            "description": f"Execute {tool_call['name']} tool",
-            "risk_level": get_tool_risk_level(tool_call["name"]),
+            "description": f"Execute {tool_call['name']} tool (mode: {operating_mode_str})",
+            "risk_level": final_risk,
             "requires_approval": True
         }
     }

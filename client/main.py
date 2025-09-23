@@ -27,6 +27,7 @@ from client.security.smart_approval_manager import SmartApprovalManager, SmartAp
 from client.security.tool_repetition_detector import ToolRepetitionDetector
 from client.security.tool_validator import ToolValidator, ValidationError
 from client.context.file_context_tracker import FileContextTracker
+from client.context.conversation_memory import ConversationMemory, MessageType
 from client.config import ClientConfig
 
 # Configure logging
@@ -52,6 +53,13 @@ class GambiarraClient:
         self.tool_repetition_detector = ToolRepetitionDetector(limit=3)
         self.tool_validator = ToolValidator()
 
+        # Context tracking
+        self.file_context_tracker = FileContextTracker(max_tracked_files=200)
+        self.conversation_memory = ConversationMemory(max_tokens=32000, context_window_ratio=0.8)
+
+        # AI response buffer for streaming
+        self.current_ai_response = ""
+
         # Tool management
         self.tool_manager = ToolManager(self._create_security_manager())
 
@@ -70,11 +78,12 @@ class GambiarraClient:
         logger.info(f"🚀 Gambiarra Client initialized for workspace: {config.workspace_root}")
 
     def _create_security_manager(self):
-        """Create security manager with path validator and command filter."""
+        """Create security manager with path validator, command filter, and context tracker."""
         class SecurityManager:
-            def __init__(self, path_validator, command_filter):
+            def __init__(self, path_validator, command_filter, file_context_tracker):
                 self.path_validator = path_validator
                 self.command_filter = command_filter
+                self.file_context_tracker = file_context_tracker
 
             def validate_path(self, path: str) -> str:
                 return self.path_validator.validate_path(path)
@@ -82,7 +91,16 @@ class GambiarraClient:
             def is_command_allowed(self, command: str) -> bool:
                 return self.command_filter.is_command_allowed(command)
 
-        return SecurityManager(self.path_validator, self.command_filter)
+            def track_file_read(self, path: str, content: str = None) -> None:
+                return self.file_context_tracker.track_file_read(path, content)
+
+            def track_file_write(self, path: str, content: str = None) -> None:
+                return self.file_context_tracker.track_file_write(path, content)
+
+            def check_file_freshness(self, path: str) -> Dict[str, any]:
+                return self.file_context_tracker.check_file_freshness(path)
+
+        return SecurityManager(self.path_validator, self.command_filter, self.file_context_tracker)
 
     def _initialize_tools(self):
         """Initialize all client-side tools."""
@@ -315,6 +333,9 @@ class GambiarraClient:
         # Reset tool repetition detector for new session
         self.tool_repetition_detector.reset()
 
+        # Clear conversation memory for new session
+        self.conversation_memory.clear_history()
+
         logger.info(f"🎯 Session created: {self.session_id}")
         print(f"🎯 Session created: {self.session_id}")
 
@@ -343,7 +364,10 @@ class GambiarraClient:
             })
             return
 
-        # 2. Check for tool repetition
+        # 2. Check file context freshness for file operations
+        file_context_warning = self._check_file_context_for_tool(tool_name, parameters)
+
+        # 3. Check for tool repetition
         repetition_result = self.tool_repetition_detector.check(tool_name, parameters)
 
         if not repetition_result.allow_execution:
@@ -360,11 +384,18 @@ class GambiarraClient:
             })
             return
 
+        # Enhance description with context warning if applicable
+        base_description = request_data["description"]
+        if file_context_warning:
+            enhanced_description = f"{base_description}\n\n{file_context_warning}"
+        else:
+            enhanced_description = base_description
+
         request = ToolApprovalRequest(
             request_id=request_id,
             tool_name=request_data["name"],
             parameters=request_data["parameters"],
-            description=request_data["description"],
+            description=enhanced_description,
             risk_level=request_data["risk_level"],
             requires_approval=request_data["requires_approval"],
             session_id=self.session_id,
@@ -394,8 +425,27 @@ class GambiarraClient:
 
         logger.info(f"🔧 Executing tool: {tool_name}")
 
+        # Track tool call in conversation memory
+        self.conversation_memory.add_tool_call(
+            tool_name,
+            parameters,
+            {"execution_id": execution_id, "session_id": self.session_id}
+        )
+
         # Execute tool
         result = await self.tool_manager.execute_tool(tool_name, parameters)
+
+        # Track tool result in conversation memory
+        self.conversation_memory.add_tool_result(
+            tool_name,
+            result.data or result.error or "No result data",
+            success=(result.status == "success"),
+            {
+                "execution_id": execution_id,
+                "status": result.status,
+                "metadata": result.metadata
+            }
+        )
 
         # Record success or failure in validator
         if result.status == "success":
@@ -437,12 +487,26 @@ class GambiarraClient:
         content = chunk["content"]
         is_complete = chunk["is_complete"]
 
+        # Accumulate response content
+        if content:
+            self.current_ai_response += content
+
         # Display AI response
         if content:
             print(content, end="", flush=True)
 
         if is_complete:
             print()  # New line when complete
+
+            # Track complete AI response in conversation memory
+            if self.current_ai_response.strip():
+                self.conversation_memory.add_assistant_message(
+                    self.current_ai_response,
+                    {"session_id": self.session_id}
+                )
+
+            # Reset buffer for next response
+            self.current_ai_response = ""
 
     async def _handle_error(self, message: Dict[str, Any]) -> None:
         """Handle error message from server."""
@@ -464,6 +528,9 @@ class GambiarraClient:
 
     async def _send_user_message(self, content: str, images: list = None) -> None:
         """Send user message to server."""
+        # Track user message in conversation memory
+        self.conversation_memory.add_user_message(content, {"images": images or []})
+
         await self._send_message({
             "type": "user_message",
             "session_id": self.session_id,
@@ -534,6 +601,43 @@ class GambiarraClient:
 
         logger.info("🧹 Client cleanup completed")
 
+    def _check_file_context_for_tool(self, tool_name: str, parameters: Dict[str, Any]) -> Optional[str]:
+        """
+        Check file context freshness for file operations and return warning if needed.
+
+        Args:
+            tool_name: Name of the tool being executed
+            parameters: Tool parameters
+
+        Returns:
+            Warning message if file context is stale, None otherwise
+        """
+        # Only check file operations that use file paths
+        file_tools = {"read_file", "write_to_file", "search_and_replace", "insert_content"}
+
+        if tool_name not in file_tools:
+            return None
+
+        # Extract file path from parameters
+        file_path = None
+        if tool_name == "read_file" and "args" in parameters and "file" in parameters["args"]:
+            file_path = parameters["args"]["file"].get("path")
+        elif "path" in parameters:
+            file_path = parameters["path"]
+
+        if not file_path:
+            return None
+
+        # Check file freshness
+        freshness_info = self.file_context_tracker.check_file_freshness(file_path)
+
+        if freshness_info["stale"]:
+            warning = f"⚠️  File context may be stale: {file_path} - {freshness_info['reason']}"
+            logger.warning(warning)
+            return warning
+
+        return None
+
     def _show_help(self):
         """Show help information."""
         print("\n💡 Gambiarra Help")
@@ -567,6 +671,28 @@ class GambiarraClient:
         print(f"📁 Workspace: {self.config.workspace_root}")
         print(f"🏃 Running: {'✅ Yes' if self.running else '❌ No'}")
         print(f"🔧 Available tools: {len(self.tool_manager.list_tools())}")
+
+        # File context status
+        context_summary = self.file_context_tracker.get_context_summary()
+        stale_files = self.file_context_tracker.get_stale_files()
+        print(f"📂 Tracked files: {context_summary['tracked_files']}")
+        print(f"✏️  Modified files: {context_summary['modified_files']}")
+        print(f"⚠️  Stale files: {context_summary['stale_files']}")
+
+        if stale_files:
+            print(f"🔄 Files needing refresh: {', '.join(stale_files[:3])}")
+            if len(stale_files) > 3:
+                print(f"   ... and {len(stale_files) - 3} more")
+
+        # Conversation memory status
+        memory_stats = self.conversation_memory.get_memory_stats()
+        memory_suggestion = self.conversation_memory.suggest_compression()
+        print(f"💭 Conversation: {memory_stats['total_messages']} messages")
+        print(f"🧠 Memory usage: {memory_stats['token_usage_percent']:.1f}% ({memory_stats['current_tokens']}/{memory_stats['context_window_tokens']} tokens)")
+
+        if memory_suggestion:
+            print(f"💡 {memory_suggestion}")
+
         print("=" * 40)
 
     def send_user_input(self, message: str) -> None:

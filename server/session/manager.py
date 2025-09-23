@@ -28,6 +28,7 @@ class SessionConfig:
     """Configuration for a session."""
     working_directory: str = "."
     auto_approve_reads: bool = True
+    operating_mode: str = "code"  # Default to full code mode
     require_approval_for_writes: bool = True
     max_concurrent_file_reads: int = 5
 
