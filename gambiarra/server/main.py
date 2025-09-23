@@ -806,15 +806,60 @@ async def handle_tool_approval(session_id: str, message: Dict[str, Any]) -> Dict
             }
         }
     else:
+        # Get tool info for better denial message
+        tool_call = pending_tool_requests.get(request_id)
+        tool_name = tool_call.get("name", "unknown") if tool_call else "unknown"
+        feedback = message.get("feedback", "Tool execution denied by user")
+
         # Remove from pending even if denied
         pending_tool_requests.pop(request_id, None)
+
+        # Feed the denial back into the AI conversation
+        await _handle_tool_denial_for_ai(session_id, tool_name, feedback)
 
         return {
             "type": "tool_denied",
             "session_id": session_id,
             "request_id": request_id,
-            "message": "Tool execution denied by user"
+            "tool_name": tool_name,
+            "reason": feedback
         }
+
+async def _handle_tool_denial_for_ai(session_id: str, tool_name: str, feedback: str) -> None:
+    """Handle tool denial by feeding the information back into the AI conversation."""
+    try:
+        session = session_manager.get_session(session_id)
+        if not session:
+            logger.error(f"❌ Session {session_id} not found for tool denial handling")
+            return
+
+        # Create a tool result indicating denial
+        denial_result = {
+            "status": "error",
+            "error": {
+                "code": "TOOL_DENIED",
+                "message": f"Tool '{tool_name}' was denied by the user: {feedback}"
+            },
+            "data": None,
+            "metadata": {
+                "tool_name": tool_name,
+                "denial_reason": feedback,
+                "denied_at": time.time()
+            }
+        }
+
+        # Add the denial as a message to the conversation for AI to process
+        denial_message = f"Tool result: The '{tool_name}' tool was denied by the user. Reason: {feedback}. Please acknowledge this and consider alternative approaches."
+        await session.add_message("assistant", denial_message)
+
+        logger.info(f"✅ Tool denial added to conversation")
+
+        # Continue the agentic loop to let AI handle the denial
+        await process_ai_response(session_id, session)
+
+    except Exception as e:
+        logger.error(f"❌ Error handling tool denial for AI: {e}")
+
 
 async def handle_tool_result(session_id: str, message: Dict[str, Any]) -> Dict[str, Any]:
     """Handle tool execution result from client."""
