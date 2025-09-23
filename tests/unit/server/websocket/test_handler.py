@@ -6,6 +6,11 @@ Tests connection management, message routing, and error handling.
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
+
+# Mock FastAPI WebSocket before importing
+import sys
+sys.modules['fastapi'] = MagicMock()
+
 from gambiarra.server.websocket_handler import WebSocketManager
 
 

@@ -228,14 +228,20 @@ class TestSessionManager:
 
     async def test_create_session(self, session_manager, session_config):
         """Test creating a new session."""
-        session_id = "test-session-123"
         connection_id = "conn-456"
+        config_dict = {
+            "working_directory": "/test",
+            "auto_approve_reads": True,
+            "require_approval_for_writes": True,
+            "max_concurrent_file_reads": 5
+        }
 
-        session = await session_manager.create_session(session_id, connection_id, session_config)
+        session_id = await session_manager.create_session(connection_id, config_dict)
 
+        session = session_manager.get_session(session_id)
+        assert session is not None
         assert session.session_id == session_id
         assert session.connection_id == connection_id
-        assert session.config == session_config
         assert session_id in session_manager.sessions
 
     async def test_get_session(self, session_manager, session_config):

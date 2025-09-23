@@ -9,15 +9,15 @@
 
 ## Features
 
-🔒 **Security-First Design**: Client-side file operations with comprehensive security validation
-🤖 **AI-Powered**: Server-side AI orchestration with multiple provider support (OpenAI, TrustGraph, Test)
-🔌 **Plugin System**: Dynamic tool loading and extensibility
-⚡ **High Performance**: Connection pooling, request batching, and fault tolerance
-🌐 **Real-time Communication**: WebSocket-based bidirectional communication
-🛡️ **Fault Tolerance**: Circuit breakers and graceful degradation
-📊 **Event-Driven**: Modern event-driven architecture with task management
-🎯 **Tool Management**: Comprehensive tool registry with versioning and validation
-🔧 **XML Tool Format**: Comprehensive XML-based tool calling system
+- 🔒 **Security-First Design**: Client-side file operations with comprehensive security validation
+- 🤖 **AI-Powered**: Server-side AI orchestration with multiple provider support (OpenAI, TrustGraph, Test)
+- 🔌 **Plugin System**: Dynamic tool loading and extensibility
+- ⚡ **High Performance**: Connection pooling, request batching, and fault tolerance
+- 🌐 **Real-time Communication**: WebSocket-based bidirectional communication
+- 🛡️ **Fault Tolerance**: Circuit breakers and graceful degradation
+- 📊 **Event-Driven**: Modern event-driven architecture with task management
+- 🎯 **Tool Management**: Comprehensive tool registry with versioning and validation
+- 🔧 **XML Tool Format**: Comprehensive XML-based tool calling system
 
 ## Quick Start
 

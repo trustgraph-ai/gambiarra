@@ -125,12 +125,15 @@ class TestMessageParsing:
             '{"type": user_message, "session_id": "test"}',   # Unquoted value
             '',  # Empty string
             'not json at all',  # Not JSON
-            '{"type": null, "session_id": "test"}'  # Null type
         ]
 
         for malformed in malformed_json_strings:
             with pytest.raises((json.JSONDecodeError, ValueError, TypeError)):
                 json.loads(malformed)
+
+        # Null type is valid JSON, so test separately
+        result = json.loads('{"type": null, "session_id": "test"}')
+        assert result["type"] is None  # Null is valid JSON value
 
     def test_tool_call_xml_extraction(self, valid_ai_response):
         """Test extraction of XML tool calls from AI responses."""
