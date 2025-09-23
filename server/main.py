@@ -30,6 +30,9 @@ from server.core.session.context import get_context_manager
 from server.core.events.bus import get_event_bus, EventTypes, publish_event
 from server.core.task.manager import get_task_manager
 from server.core.task.handlers import register_all_handlers
+from server.core.recovery.degraded_mode import get_degraded_mode_manager, ComponentType
+from server.core.performance.connection_pool import get_connection_pool_manager
+from server.core.performance.request_batcher import get_batcher_manager
 
 # Configure logging
 logging.basicConfig(
@@ -51,6 +54,9 @@ context_manager = get_context_manager()
 tool_registry = get_tool_registry()
 event_bus = get_event_bus()
 task_manager = get_task_manager()
+degraded_mode_manager = get_degraded_mode_manager()
+connection_pool_manager = get_connection_pool_manager()
+batcher_manager = get_batcher_manager()
 
 # Store pending tool requests
 pending_tool_requests = {}
@@ -75,6 +81,16 @@ async def lifespan(app: FastAPI):
     # Register event handlers
     register_all_handlers()
 
+    # Initialize degraded mode monitoring
+    degraded_mode_manager.register_component("ai_provider", ComponentType.AI_PROVIDER)
+    degraded_mode_manager.register_component("event_bus", ComponentType.EVENT_BUS)
+    degraded_mode_manager.register_component("session_manager", ComponentType.SESSION_MANAGER)
+    degraded_mode_manager.register_component("websocket_manager", ComponentType.NETWORK)
+
+    # Start performance managers
+    await connection_pool_manager.start_all()
+    await batcher_manager.start_all()
+
     # Publish system startup event
     await publish_event(
         event_type=EventTypes.SYSTEM_STARTUP,
@@ -83,6 +99,8 @@ async def lifespan(app: FastAPI):
     )
 
     logger.info("✅ Event-driven architecture initialized")
+    logger.info("✅ Degraded mode monitoring enabled")
+    logger.info("✅ Performance optimization features started")
 
     yield
 
@@ -99,6 +117,10 @@ async def lifespan(app: FastAPI):
     # Stop event-driven components
     await task_manager.stop()
     await event_bus.stop()
+
+    # Stop performance managers
+    await connection_pool_manager.stop_all()
+    await batcher_manager.stop_all()
 
     await websocket_manager.disconnect_all()
     await session_manager.cleanup_all()
@@ -136,7 +158,9 @@ async def root():
         "features": {
             "ai_providers": list(ai_provider_manager.available_providers()),
             "websocket_connections": websocket_manager.connection_count(),
-            "active_sessions": session_manager.active_session_count()
+            "active_sessions": session_manager.active_session_count(),
+            "degradation_level": degraded_mode_manager.current_level.value,
+            "available_features": degraded_mode_manager.get_available_features()
         }
     }
 
