@@ -43,6 +43,10 @@ ai_provider_manager = AIProviderManager(default_provider=config.ai_provider)
 tool_mode_filter = ToolModeFilter()
 error_recovery_manager = ErrorRecoveryManager()
 
+# New modular managers
+context_manager = get_context_manager()
+tool_registry = get_tool_registry()
+
 # Store pending tool requests
 pending_tool_requests = {}
 
@@ -349,12 +353,7 @@ async def handle_connect(connection_id: str, message: Dict[str, Any]) -> Dict[st
         "server_info": {
             "version": "1.0.0",
             "supported_providers": list(ai_provider_manager.available_providers()),
-            "available_tools": [
-                "read_file", "write_to_file", "search_files", "list_files",
-                "insert_content", "search_and_replace", "execute_command",
-                "list_code_definition_names", "attempt_completion",
-                "ask_followup_question", "update_todo_list"
-            ]
+            "available_tools": tool_registry.list_tools()
         }
     }
 
@@ -495,14 +494,29 @@ def parse_tool_calls(content: str) -> list:
     matches = re.findall(tool_pattern, content, re.DOTALL)
 
     tool_calls = []
+
     for tool_name, tool_content in matches:
-        if tool_name in ["read_file", "write_to_file", "search_files", "execute_command", "list_files", "search_and_replace"]:
+        if tool_name in tool_registry.list_tools():
+            # Validate XML format first
+            validation_result = validate_xml_tool_call(f"<{tool_name}>{tool_content}</{tool_name}>")
+
+            if not validation_result.is_valid:
+                logger.warning(f"⚠️ Invalid XML format for {tool_name}: {validation_result.errors}")
+                continue
+
             # Parse parameters from XML content using new parser
             params = ToolCallParser.parse_xml_parameters(tool_content)
-            tool_calls.append({
-                "name": tool_name,
-                "parameters": params
-            })
+
+            # Validate tool call against registry
+            try:
+                tool_registry.validate_tool_call(tool_name, params)
+                tool_calls.append({
+                    "name": tool_name,
+                    "parameters": params
+                })
+            except Exception as e:
+                logger.warning(f"⚠️ Tool validation failed for {tool_name}: {e}")
+                continue
 
     return tool_calls
 
