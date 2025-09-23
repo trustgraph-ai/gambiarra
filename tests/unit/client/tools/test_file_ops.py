@@ -69,7 +69,12 @@ class TestReadFileTool:
         mock_security_manager.validate_path.return_value = "/safe/path/test.py"
 
         # Mock file operations to avoid actual file I/O
-        with patch("aiofiles.open", mock_open(read_data="test content")):
+        mock_file = AsyncMock()
+        mock_file.read = AsyncMock(return_value="test content")
+        mock_file.__aenter__ = AsyncMock(return_value=mock_file)
+        mock_file.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("aiofiles.open", return_value=mock_file):
             with patch("os.path.exists", return_value=True):
                 result = await tool.execute({"path": "test.py"})
                 assert result.status == "success"
@@ -82,11 +87,13 @@ class TestReadFileTool:
         parameters = {"path": "../dangerous/path.py"}
 
         # Security manager should be called to validate path
-        mock_security_manager.validate_path.side_effect = ValueError("Path traversal detected")
+        from gambiarra.client.security.path_validator import SecurityError
+        mock_security_manager.validate_path.side_effect = SecurityError("Path traversal detected")
 
-        # Should propagate security validation error
-        with pytest.raises(ValueError, match="Path traversal detected"):
-            await tool.execute(parameters)
+        # Should return security error result instead of raising
+        result = await tool.execute(parameters)
+        assert result.status == "error"
+        assert result.error["code"] == "SECURITY_ERROR"
 
         # Verify security manager was called
         mock_security_manager.validate_path.assert_called_once_with("../dangerous/path.py")
@@ -96,7 +103,9 @@ class TestReadFileTool:
         """Test file read tracking for context management."""
         tool = ReadFileTool(mock_security_manager)
 
+        # Create the test file
         test_file = temp_workspace / "tracked.py"
+        test_file.write_text("# Tracked file content\nprint('tracking test')\n")
         mock_security_manager.validate_path.return_value = str(test_file)
 
         parameters = {"path": "tracked.py"}

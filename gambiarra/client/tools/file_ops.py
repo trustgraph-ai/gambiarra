@@ -30,11 +30,23 @@ class ReadFileTool(FileOperationTool):
 
     async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
         """Read file contents."""
-        self.validate_parameters(parameters, ["path"], ["start_line", "end_line"])
+        self.validate_parameters(parameters, ["path"], ["start_line", "end_line", "line_range"])
 
         path = parameters["path"]
         start_line = parameters.get("start_line")
         end_line = parameters.get("end_line")
+        line_range = parameters.get("line_range")
+
+        # Support line_range format [start, end]
+        if line_range:
+            if isinstance(line_range, list) and len(line_range) == 2:
+                start_line, end_line = line_range
+            else:
+                return ToolResult.create_error(
+                    "INVALID_LINE_RANGE_FORMAT",
+                    "line_range must be a list of [start_line, end_line]",
+                    {"provided_line_range": line_range}
+                )
 
         try:
             # Validate path through security manager (this calls PathValidator)
@@ -54,6 +66,11 @@ class ReadFileTool(FileOperationTool):
 
             lines = content.split('\n')
 
+            # Handle trailing newline in line count calculation
+            actual_line_count = len(lines)
+            if content.endswith('\n') and lines and lines[-1] == '':
+                actual_line_count -= 1
+
             # Apply line range if specified
             if start_line is not None or end_line is not None:
                 # Validate line parameters
@@ -69,11 +86,11 @@ class ReadFileTool(FileOperationTool):
                 if end_line is None:
                     end_line = len(lines)
 
-                if end_line < start_line or start_line > len(lines):
+                if end_line < start_line or start_line > actual_line_count:
                     return ToolResult.create_error(
                         "INVALID_LINE_RANGE",
                         f"Invalid line range: {start_line}-{end_line}",
-                        {"total_lines": len(lines), "start_line": start_line, "end_line": end_line}
+                        {"total_lines": actual_line_count, "start_line": start_line, "end_line": end_line}
                     )
 
                 # Convert to 0-based indexing for slicing
@@ -90,7 +107,7 @@ class ReadFileTool(FileOperationTool):
                 data=result_content,
                 metadata={
                     "file_size": len(content),
-                    "line_count": len(lines),
+                    "line_count": actual_line_count,
                     "read_lines": read_lines,
                     "encoding": "utf-8"
                 }

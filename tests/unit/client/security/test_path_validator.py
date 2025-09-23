@@ -5,7 +5,7 @@ These tests are CRITICAL - path validation prevents directory traversal attacks.
 
 import pytest
 from pathlib import Path
-from gambiarra.client.security.path_validator import PathValidator
+from gambiarra.client.security.path_validator import PathValidator, SecurityError
 
 
 @pytest.mark.security
@@ -52,7 +52,7 @@ class TestPathValidator:
         ]
 
         for dangerous_path in dangerous_paths:
-            with pytest.raises(ValueError, match="Path traversal detected"):
+            with pytest.raises(SecurityError, match="Path traversal detected"):
                 validator.validate_path(dangerous_path)
 
     def test_absolute_path_rejection(self, temp_workspace):

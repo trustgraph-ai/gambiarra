@@ -56,9 +56,42 @@ class PathValidator:
         self.ignore_patterns.extend(default_patterns)
         logger.info(f"📁 Total ignore patterns: {len(self.ignore_patterns)}")
 
+    def _check_suspicious_patterns(self, input_path: str) -> None:
+        """Check for suspicious path patterns that indicate traversal attempts."""
+        import urllib.parse
+
+        # URL decode the path to catch encoded traversal attempts
+        decoded_path = urllib.parse.unquote(input_path)
+
+        # Check both original and decoded paths for suspicious patterns
+        paths_to_check = [input_path, decoded_path]
+
+        for path_to_check in paths_to_check:
+            # Check for directory traversal patterns
+            suspicious_patterns = [
+                "..",  # Parent directory
+                "\\",  # Windows path separators (suspicious on Unix)
+            ]
+
+            for pattern in suspicious_patterns:
+                if pattern in path_to_check:
+                    # Additional check: if it contains .. followed by / or \, it's definitely traversal
+                    if ".." in path_to_check and any(sep in path_to_check for sep in ["/", "\\"]):
+                        raise SecurityError(
+                            f"Path traversal detected: suspicious pattern '{pattern}' in path '{input_path}'",
+                            {
+                                "input_path": input_path,
+                                "decoded_path": decoded_path,
+                                "detected_pattern": pattern
+                            }
+                        )
+
     def validate_path(self, input_path: str) -> str:
         """Validate and resolve path within workspace."""
         try:
+            # Check for suspicious patterns before processing
+            self._check_suspicious_patterns(input_path)
+
             # Convert to Path object
             path = Path(input_path)
 
