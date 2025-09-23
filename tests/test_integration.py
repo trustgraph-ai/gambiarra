@@ -163,7 +163,13 @@ async def test_integration():
 
                             # Simulate tool execution (read_file)
                             if tool["name"] == "read_file":
-                                file_path = tool["parameters"]["path"]
+                                # Handle nested args structure
+                                params = tool["parameters"]
+                                if "args" in params and "file" in params["args"]:
+                                    file_path = params["args"]["file"]["path"]
+                                else:
+                                    # Fallback for legacy structure
+                                    file_path = params.get("path", "test.py")
                                 try:
                                     # Read the file content
                                     content = test_file.read_text()

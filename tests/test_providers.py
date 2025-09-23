@@ -20,38 +20,44 @@ def test_server_provider_configuration():
     print("""
 1️⃣ TEST PROVIDER (Default - Always Available):
    # No configuration needed - test provider is always available
-   python -m gambiarra.server.main
+   gambiarra-server
+   # Or: python -m gambiarra.server
 
 2️⃣ OPENAI PROVIDER:
    # Set OpenAI API key and choose OpenAI as default
    export OPENAI_API_KEY="your-openai-api-key"
    export GAMBIARRA_AI_PROVIDER=openai
    export GAMBIARRA_OPENAI_MODEL=gpt-4
-   python -m gambiarra.server.main
+   gambiarra-server
+   # Or: python -m gambiarra.server
 
 3️⃣ TRUSTGRAPH PROVIDER:
    # Configure TrustGraph URL and flow, set as default
    export GAMBIARRA_TRUSTGRAPH_URL="http://localhost:8088/"
    export GAMBIARRA_TRUSTGRAPH_FLOW="coding-assistant"
    export GAMBIARRA_AI_PROVIDER=trustgraph
-   python -m gambiarra.server.main
+   gambiarra-server
+   # Or: python -m gambiarra.server
 
 4️⃣ MULTIPLE PROVIDERS (Server chooses based on GAMBIARRA_AI_PROVIDER):
    # Configure multiple providers, server uses the one specified
    export OPENAI_API_KEY="your-openai-key"
    export GAMBIARRA_TRUSTGRAPH_URL="http://localhost:8088/"
    export GAMBIARRA_AI_PROVIDER=trustgraph  # Server will use TrustGraph
-   python -m gambiarra.server.main
+   gambiarra-server
+   # Or: python -m gambiarra.server
 """)
 
     print("\n👥 Client Usage (Same regardless of server provider):")
     print("=" * 50)
     print("""
 # Client doesn't need to know which provider the server is using
-python -m gambiarra.client.main --workspace ./my-project
+gambiarra-client --workspace ./my-project
+# Or: python -m gambiarra.client --workspace ./my-project
 
-# Client can specify workspace and server URL only
-python -m gambiarra.client.main --workspace /path/to/project --server ws://localhost:8000/ws
+# Client can specify workspace and server URL
+gambiarra-client --workspace /path/to/project --server-url ws://localhost:8000/ws
+# Or: python -m gambiarra.client --workspace /path/to/project --server-url ws://localhost:8000/ws
 """)
 
 def show_current_configuration():
@@ -112,28 +118,28 @@ def show_usage_examples():
     print("""
 🔥 FASTEST WAY TO GET STARTED:
    # Terminal 1: Start server with test provider (no setup needed)
-   python -m gambiarra.server.main
+   gambiarra-server
 
    # Terminal 2: Start client
-   python -m gambiarra.client.main
+   gambiarra-client
 
 🔧 USE WITH OPENAI:
    # Terminal 1: Configure and start server
    export OPENAI_API_KEY="your-key-here"
    export GAMBIARRA_AI_PROVIDER=openai
-   python -m gambiarra.server.main
+   gambiarra-server
 
    # Terminal 2: Client (same command as before)
-   python -m gambiarra.client.main
+   gambiarra-client
 
 🔗 USE WITH TRUSTGRAPH:
    # Terminal 1: Configure and start server
    export GAMBIARRA_TRUSTGRAPH_URL="http://localhost:8088/"
    export GAMBIARRA_AI_PROVIDER=trustgraph
-   python -m gambiarra.server.main
+   gambiarra-server
 
    # Terminal 2: Client (same command as before)
-   python -m gambiarra.client.main
+   gambiarra-client
 """)
 
 if __name__ == "__main__":
