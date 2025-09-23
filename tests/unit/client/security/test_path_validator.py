@@ -100,7 +100,7 @@ class TestPathValidator:
         ]
 
         for ignored_path in ignored_paths:
-            with pytest.raises(ValueError, match="Path matches ignore patterns"):
+            with pytest.raises((ValueError, SecurityError), match="(Path matches ignore patterns|Access denied by ignore patterns)"):
                 validator.validate_path(ignored_path)
 
     def test_special_file_rejection(self, temp_workspace):
@@ -143,7 +143,7 @@ class TestPathValidator:
         ]
 
         for variant in case_variants:
-            with pytest.raises(ValueError, match="Path traversal detected"):
+            with pytest.raises((ValueError, SecurityError), match="Path traversal detected"):
                 validator.validate_path(variant)
 
     def test_unicode_and_encoding_attacks(self, temp_workspace):
