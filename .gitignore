@@ -1,2 +1,6 @@
-__pycache__
+*.egg-info/
+__pycache__/
 *~
+private.json
+build/
+WORKSPACE/
