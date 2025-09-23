@@ -162,7 +162,7 @@ class ToolCallParser:
             match = re.search(pattern, xml_content, flags)
             if match:
                 value = match.group(1)
-                if param_name == "line_number":
+                if param_name in ["line_number", "line_count"]:
                     params[param_name] = int(value)
                 elif param_name == "recursive":
                     params[param_name] = value == "true"
