@@ -197,6 +197,8 @@ class GambiarraClient:
 
         except KeyboardInterrupt:
             logger.info("⏹️  Client interrupted by user")
+        except asyncio.CancelledError:
+            logger.info("🛑 Client cancelled")
         except Exception as e:
             logger.error(f"❌ Client error: {e}")
         finally:
@@ -210,8 +212,14 @@ class GambiarraClient:
 
         while self.running:
             try:
-                # Get user input
-                user_input = await aioconsole.ainput("\n🤖 You: ")
+                # Get user input with timeout to allow for cancellation
+                try:
+                    user_input = await asyncio.wait_for(
+                        aioconsole.ainput("\n🤖 You: "),
+                        timeout=1.0  # Check running flag every second
+                    )
+                except asyncio.TimeoutError:
+                    continue  # Check if still running
 
                 # Handle special commands
                 cmd = user_input.lower().strip()
@@ -245,6 +253,14 @@ class GambiarraClient:
 
             except EOFError:
                 print("\n👋 Goodbye!")
+                self.running = False
+                break
+            except asyncio.CancelledError:
+                print("\n🛑 Client shutting down...")
+                self.running = False
+                break
+            except KeyboardInterrupt:
+                print("\n🛑 Interrupted by user")
                 self.running = False
                 break
             except Exception as e:
@@ -282,6 +298,9 @@ class GambiarraClient:
 
             except asyncio.TimeoutError:
                 logger.warning("⏰ Timeout waiting for response")
+                break
+            except asyncio.CancelledError:
+                logger.info("🛑 Response wait cancelled")
                 break
             except ConnectionClosed:
                 logger.info("🔌 Connection closed")
@@ -724,18 +743,44 @@ async def main():
     # Create and run client
     client = GambiarraClient(config)
 
-    # Handle shutdown gracefully
+    # Create shutdown event for clean async signal handling
+    shutdown_event = asyncio.Event()
+
     def signal_handler(signum, frame):
         logger.info("🛑 Shutdown signal received")
         client.running = False
+        # Set the shutdown event to wake up the main task
+        shutdown_event.set()
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
     try:
-        await client.run()
+        # Run client and shutdown monitoring concurrently
+        client_task = asyncio.create_task(client.run())
+        shutdown_task = asyncio.create_task(shutdown_event.wait())
+
+        # Wait for either the client to finish or shutdown signal
+        done, pending = await asyncio.wait(
+            [client_task, shutdown_task],
+            return_when=asyncio.FIRST_COMPLETED
+        )
+
+        # Cancel any remaining tasks
+        for task in pending:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        logger.info("🛑 Client shutdown initiated")
+        await client.cleanup()
+        logger.info("✅ Client shutdown complete")
+
     except Exception as e:
         logger.error(f"❌ Client failed: {e}")
+        await client.cleanup()
         sys.exit(1)
 
 
