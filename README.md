@@ -1,6 +1,9 @@
-# Gambiarra 🧠
+# Gambiarra
 
-**Gambiarra** is a Python-based AI coding assistant that provides secure, client-side file operations with server-side AI orchestration. It's inspired by KiloCode and designed for maximum security and flexibility.
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**Gambiarra** is an AI-powered coding assistant with a secure client-server architecture, inspired by KiloCode. It features client-side file operations for security and server-side AI orchestration for intelligent code assistance.
 
 > **Gambiarra** is a Brazilian Portuguese term meaning "creative improvised solution" - perfect for an AI that helps you solve coding problems!
 

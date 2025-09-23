@@ -1,0 +1,22 @@
+{
+  "name": "example_tool",
+  "version": "1.0.0",
+  "type": "tool",
+  "description": "Example tool plugin demonstrating the plugin system",
+  "author": "Gambiarra Team",
+  "entry_point": "example_tool.ExampleToolPlugin",
+  "dependencies": [],
+  "permissions": [],
+  "config": {
+    "enabled": true
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true
+      }
+    }
+  }
+}
