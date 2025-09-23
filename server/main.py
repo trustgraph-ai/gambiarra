@@ -19,6 +19,7 @@ from server.websocket_handler import WebSocketManager
 from server.ai_integration.providers import AIProviderManager
 from server.session.manager import SessionManager
 from server.tools.mode_filter import ToolModeFilter, OperatingMode
+from server.error_handling import ErrorRecoveryManager, ErrorCategory, ErrorSeverity
 from server.config import ServerConfig
 
 # Configure logging
@@ -34,6 +35,7 @@ websocket_manager = WebSocketManager()
 session_manager = SessionManager()
 ai_provider_manager = AIProviderManager(default_provider=config.ai_provider)
 tool_mode_filter = ToolModeFilter()
+error_recovery_manager = ErrorRecoveryManager()
 
 # Store pending tool requests
 pending_tool_requests = {}
@@ -175,6 +177,19 @@ async def set_session_mode(session_id: str, request: dict):
         "allowed_tools": list(tool_mode_filter.get_allowed_tools_for_mode(operating_mode))
     }
 
+@app.get("/errors/stats")
+async def get_error_statistics():
+    """Get error statistics for monitoring."""
+    return error_recovery_manager.get_error_statistics()
+
+@app.get("/errors/recent")
+async def get_recent_errors(count: int = 10):
+    """Get recent errors for debugging."""
+    return {
+        "recent_errors": error_recovery_manager.get_recent_errors(count),
+        "count": count
+    }
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """Main WebSocket endpoint for client connections."""
@@ -206,51 +221,94 @@ async def handle_websocket_connection(connection_id: str, websocket: WebSocket):
 
     try:
         while True:
-            # Receive message from client
-            data = await websocket.receive_text()
-            message = json.loads(data)
+            try:
+                # Receive message from client
+                data = await websocket.receive_text()
+                message = json.loads(data)
+            except json.JSONDecodeError as e:
+                # Handle malformed JSON
+                await error_recovery_manager.handle_error(
+                    e,
+                    ErrorCategory.VALIDATION,
+                    ErrorSeverity.LOW,
+                    {"connection_id": connection_id, "raw_data": data}
+                )
+                continue
 
             logger.info(f"📨 Received from {connection_id}: {message.get('type', 'unknown')}")
 
-            # Route message based on type
-            if message["type"] == "connect":
-                response = await handle_connect(connection_id, message)
+            try:
+                # Route message based on type
+                if message["type"] == "connect":
+                    response = await handle_connect(connection_id, message)
 
-            elif message["type"] == "create_session":
-                session_id = await handle_create_session(connection_id, message)
-                response = {"type": "session_created", "session_id": session_id, "status": "ready"}
+                elif message["type"] == "create_session":
+                    session_id = await handle_create_session(connection_id, message)
+                    response = {"type": "session_created", "session_id": session_id, "status": "ready"}
 
-            elif message["type"] == "user_message":
-                if not session_id:
-                    raise ValueError("No active session")
-                response = await handle_user_message(session_id, message)
+                elif message["type"] == "user_message":
+                    if not session_id:
+                        raise ValueError("No active session")
+                    response = await handle_user_message(session_id, message)
 
-            elif message["type"] == "tool_approval_response":
-                if not session_id:
-                    raise ValueError("No active session")
-                response = await handle_tool_approval(session_id, message)
-                # The response from handle_tool_approval should be sent immediately
+                elif message["type"] == "tool_approval_response":
+                    if not session_id:
+                        raise ValueError("No active session")
+                    response = await handle_tool_approval(session_id, message)
+                    # The response from handle_tool_approval should be sent immediately
+                    if response:
+                        await websocket.send_text(json.dumps(response))
+                        response = None  # Don't send again
+
+                elif message["type"] == "tool_result":
+                    if not session_id:
+                        raise ValueError("No active session")
+                    response = await handle_tool_result(session_id, message)
+
+                else:
+                    response = {
+                        "type": "error",
+                        "error": {
+                            "code": "UNKNOWN_MESSAGE_TYPE",
+                            "message": f"Unknown message type: {message['type']}"
+                        }
+                    }
+
+                # Send response if not already handled by streaming
                 if response:
                     await websocket.send_text(json.dumps(response))
-                    response = None  # Don't send again
 
-            elif message["type"] == "tool_result":
-                if not session_id:
-                    raise ValueError("No active session")
-                response = await handle_tool_result(session_id, message)
+            except Exception as handler_error:
+                # Handle errors in message processing
+                recovery_result = await error_recovery_manager.handle_error(
+                    handler_error,
+                    ErrorCategory.SESSION,
+                    ErrorSeverity.MEDIUM,
+                    {
+                        "connection_id": connection_id,
+                        "session_id": session_id,
+                        "message_type": message.get("type", "unknown"),
+                        "websocket": websocket
+                    },
+                    session_id=session_id
+                )
 
-            else:
-                response = {
+                # Send error response to client
+                error_response = {
                     "type": "error",
                     "error": {
-                        "code": "UNKNOWN_MESSAGE_TYPE",
-                        "message": f"Unknown message type: {message['type']}"
+                        "code": "MESSAGE_PROCESSING_ERROR",
+                        "message": str(handler_error),
+                        "recovery_attempted": recovery_result.get("recovered", False)
                     }
                 }
 
-            # Send response if not already handled by streaming
-            if response:
-                await websocket.send_text(json.dumps(response))
+                try:
+                    await websocket.send_text(json.dumps(error_response))
+                except:
+                    # WebSocket might be closed, log and break
+                    logger.error(f"❌ Failed to send error response to {connection_id}")
+                    break
 
     except WebSocketDisconnect:
         raise
@@ -381,6 +439,20 @@ async def process_ai_response(session_id: str, session):
 
     except Exception as e:
         logger.error(f"❌ Error processing AI response: {e}")
+
+        # Handle error with recovery manager
+        recovery_result = await error_recovery_manager.handle_error(
+            e,
+            ErrorCategory.AI_PROVIDER,
+            ErrorSeverity.HIGH,
+            {
+                "session_id": session_id,
+                "provider": ai_provider_manager.get_provider_name(),
+                "message_count": len(messages) if 'messages' in locals() else 0
+            },
+            session_id=session_id
+        )
+
         # Send error to client
         websocket = websocket_manager.get_websocket(session.connection_id)
         if websocket:
@@ -388,7 +460,8 @@ async def process_ai_response(session_id: str, session):
                 "type": "error",
                 "error": {
                     "code": "AI_PROCESSING_ERROR",
-                    "message": str(e)
+                    "message": str(e),
+                    "recovery_attempted": recovery_result.get("recovered", False)
                 }
             }))
 
