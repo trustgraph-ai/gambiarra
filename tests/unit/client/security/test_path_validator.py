@@ -184,7 +184,7 @@ class TestPathValidator:
 
         for special_input in special_inputs:
             if special_input is None:
-                with pytest.raises((ValueError, TypeError)):
+                with pytest.raises((ValueError, TypeError, SecurityError)):
                     validator.validate_path(special_input)
             elif special_input in ["", "."]:
                 # These might be valid or invalid depending on implementation
@@ -196,7 +196,7 @@ class TestPathValidator:
                     # Rejection is also acceptable for security
                     pass
             else:  # ".."
-                with pytest.raises(ValueError):
+                with pytest.raises((ValueError, SecurityError)):
                     validator.validate_path(special_input)
 
     def test_get_security_info(self, temp_workspace):

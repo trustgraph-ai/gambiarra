@@ -58,6 +58,9 @@ class PathValidator:
 
     def _check_suspicious_patterns(self, input_path: str) -> None:
         """Check for suspicious path patterns that indicate traversal attempts."""
+        if input_path is None:
+            return  # Let other validation handle None input
+
         import urllib.parse
 
         # URL decode the path to catch encoded traversal attempts
@@ -67,24 +70,27 @@ class PathValidator:
         paths_to_check = [input_path, decoded_path]
 
         for path_to_check in paths_to_check:
-            # Check for directory traversal patterns
-            suspicious_patterns = [
-                "..",  # Parent directory
-                "\\",  # Windows path separators (suspicious on Unix)
-            ]
+            # Check for clear traversal attempts: .. followed by a separator
+            if "../" in path_to_check or "..\\" in path_to_check:
+                raise SecurityError(
+                    f"Path traversal detected: suspicious pattern in path '{input_path}'",
+                    {
+                        "input_path": input_path,
+                        "decoded_path": decoded_path,
+                        "reason": "Contains directory traversal sequence"
+                    }
+                )
 
-            for pattern in suspicious_patterns:
-                if pattern in path_to_check:
-                    # Additional check: if it contains .. followed by / or \, it's definitely traversal
-                    if ".." in path_to_check and any(sep in path_to_check for sep in ["/", "\\"]):
-                        raise SecurityError(
-                            f"Path traversal detected: suspicious pattern '{pattern}' in path '{input_path}'",
-                            {
-                                "input_path": input_path,
-                                "decoded_path": decoded_path,
-                                "detected_pattern": pattern
-                            }
-                        )
+            # Check for Windows path separators on Unix (suspicious)
+            if "\\" in path_to_check and path_to_check != "..":
+                raise SecurityError(
+                    f"Path traversal detected: suspicious backslash pattern in path '{input_path}'",
+                    {
+                        "input_path": input_path,
+                        "decoded_path": decoded_path,
+                        "reason": "Contains Windows-style path separators"
+                    }
+                )
 
     def validate_path(self, input_path: str) -> str:
         """Validate and resolve path within workspace."""
@@ -226,6 +232,20 @@ class PathValidator:
             "is_directory": self.workspace_root.is_dir(),
             "ignore_patterns_count": len(self.ignore_patterns),
             "has_gambiarraignore": (self.workspace_root / ".gambiarraignore").exists()
+        }
+
+    def get_security_info(self) -> dict:
+        """Get security information about the path validator."""
+        return {
+            "workspace_root": str(self.workspace_root),
+            "ignore_patterns_count": len(self.ignore_patterns),
+            "has_gambiarraignore": (self.workspace_root / ".gambiarraignore").exists(),
+            "security_features": {
+                "directory_traversal_prevention": True,
+                "ignore_pattern_filtering": True,
+                "suspicious_pattern_detection": True,
+                "workspace_boundary_enforcement": True
+            }
         }
 
 

@@ -3,7 +3,7 @@ Tests for client-side file operation tools.
 """
 
 import pytest
-from unittest.mock import patch, mock_open
+from unittest.mock import patch, mock_open, AsyncMock
 from gambiarra.client.tools.file_ops import ReadFileTool
 
 
