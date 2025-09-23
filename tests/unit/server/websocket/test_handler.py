@@ -202,6 +202,7 @@ class TestWebSocketManager:
         # Note: This test might be flaky depending on Python's GC behavior
 
 
+@pytest.mark.asyncio
 class TestWebSocketMessageRouting:
     """Test WebSocket message routing functionality."""
 
