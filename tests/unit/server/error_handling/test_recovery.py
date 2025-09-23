@@ -158,6 +158,7 @@ class TestErrorRecoveryManager:
         assert error_record.message == "Test error"
         assert error_record.session_id == "test-session"
 
+    @pytest.mark.slow
     @pytest.mark.asyncio
     async def test_handle_error_with_recovery_attempt(self, recovery_manager):
         """Test error handling with network errors."""
@@ -200,6 +201,7 @@ class TestErrorRecoveryManager:
         assert error_key in recovery_manager.failure_counts
         assert len(recovery_manager.error_history) == 10
 
+    @pytest.mark.slow
     @pytest.mark.asyncio
     async def test_multiple_error_categories(self, recovery_manager):
         """Test handling multiple error categories."""
@@ -234,6 +236,7 @@ class TestErrorRecoveryManager:
         assert stats["severity_distribution"] == {}
         assert stats["recovery_success_rate"] == 0.0
 
+    @pytest.mark.slow
     @pytest.mark.asyncio
     async def test_get_error_statistics_with_data(self, recovery_manager):
         """Test statistics with actual error data."""
