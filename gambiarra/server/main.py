@@ -613,8 +613,10 @@ def parse_tool_calls(content: str) -> list:
 
 def wrap_tool_parameters_for_client(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
     """Wrap tool parameters in the format expected by the client."""
-    # Tools that need nested args.file.path structure
+    # All tools now use nested args structure for consistency
+
     if tool_name == "read_file":
+        # Special nested structure: args.file.path
         return {
             "args": {
                 "file": {
@@ -623,9 +625,10 @@ def wrap_tool_parameters_for_client(tool_name: str, params: Dict[str, Any]) -> D
             }
         }
 
-    # Tools that use flat structure
-    # The client validator expects these tools to have their parameters at the root level
-    return params
+    # All other tools use standard nested args structure
+    return {
+        "args": params
+    }
 
 
 async def request_tool_approval(session_id: str, tool_call: dict, websocket: WebSocket):

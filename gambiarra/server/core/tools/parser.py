@@ -30,22 +30,16 @@ class ToolCallParser:
             # Fallback to legacy flat parsing for backward compatibility
             return ToolCallParser._parse_flat_structure(xml_content, unescape_content)
 
-        # Parse according to master specification
+        # Parse according to master specification - all tools now use nested args structure
         if tool_type == "read_file":
             # Nested structure: <read_file><args><file><path>...</path></file></args></read_file>
             path_match = re.search(r'<args>.*?<file>.*?<path>(.*?)</path>.*?</file>.*?</args>', xml_content, re.DOTALL)
             if path_match:
                 params["path"] = unescape_content(path_match.group(1).strip())
 
-        elif tool_type in ["write_to_file", "search_and_replace", "insert_content", "list_code_definition_names"]:
-            # Flat structure with path
-            path_match = re.search(r'<path>(.*?)</path>', xml_content)
-            if path_match:
-                params["path"] = unescape_content(path_match.group(1).strip())
-
-        elif tool_type in ["list_files", "search_files"]:
-            # Flat structure with path
-            path_match = re.search(r'<path>(.*?)</path>', xml_content)
+        elif tool_type in ["write_to_file", "search_and_replace", "insert_content", "list_code_definition_names", "list_files", "search_files"]:
+            # Nested structure with args wrapper: <tool><args><path>...</path></args></tool>
+            path_match = re.search(r'<args>.*?<path>(.*?)</path>.*?</args>', xml_content, re.DOTALL)
             if path_match:
                 params["path"] = unescape_content(path_match.group(1).strip())
 
@@ -72,66 +66,67 @@ class ToolCallParser:
 
     @staticmethod
     def _extract_tool_parameters(tool_type: str, xml_content: str, params: Dict[str, Any], unescape_func) -> None:
-        """Extract tool-specific parameters."""
+        """Extract tool-specific parameters from nested args structure."""
 
+        # All tools now use nested args structure, so search within <args> tags
         if tool_type == "write_to_file":
-            content_match = re.search(r'<content>(.*?)</content>', xml_content, re.DOTALL)
+            content_match = re.search(r'<args>.*?<content>(.*?)</content>.*?</args>', xml_content, re.DOTALL)
             if content_match:
                 params["content"] = unescape_func(content_match.group(1))
 
-            line_count_match = re.search(r'<line_count>(\d+)</line_count>', xml_content)
+            line_count_match = re.search(r'<args>.*?<line_count>(\d+)</line_count>.*?</args>', xml_content, re.DOTALL)
             if line_count_match:
                 params["line_count"] = int(line_count_match.group(1))
 
         elif tool_type == "search_files":
-            regex_match = re.search(r'<regex>(.*?)</regex>', xml_content)
+            regex_match = re.search(r'<args>.*?<regex>(.*?)</regex>.*?</args>', xml_content, re.DOTALL)
             if regex_match:
                 params["regex"] = unescape_func(regex_match.group(1).strip())
 
-            file_pattern_match = re.search(r'<file_pattern>(.*?)</file_pattern>', xml_content)
+            file_pattern_match = re.search(r'<args>.*?<file_pattern>(.*?)</file_pattern>.*?</args>', xml_content, re.DOTALL)
             if file_pattern_match:
                 params["file_pattern"] = unescape_func(file_pattern_match.group(1).strip())
 
         elif tool_type == "list_files":
-            recursive_match = re.search(r'<recursive>(true|false)</recursive>', xml_content)
+            recursive_match = re.search(r'<args>.*?<recursive>(true|false)</recursive>.*?</args>', xml_content, re.DOTALL)
             if recursive_match:
                 params["recursive"] = recursive_match.group(1) == "true"
 
         elif tool_type == "execute_command":
-            command_match = re.search(r'<command>(.*?)</command>', xml_content)
+            command_match = re.search(r'<args>.*?<command>(.*?)</command>.*?</args>', xml_content, re.DOTALL)
             if command_match:
                 params["command"] = unescape_func(command_match.group(1).strip())
 
         elif tool_type == "search_and_replace":
-            search_match = re.search(r'<search>(.*?)</search>', xml_content, re.DOTALL)
+            search_match = re.search(r'<args>.*?<search>(.*?)</search>.*?</args>', xml_content, re.DOTALL)
             if search_match:
                 params["search"] = unescape_func(search_match.group(1))
 
-            replace_match = re.search(r'<replace>(.*?)</replace>', xml_content, re.DOTALL)
+            replace_match = re.search(r'<args>.*?<replace>(.*?)</replace>.*?</args>', xml_content, re.DOTALL)
             if replace_match:
                 params["replace"] = unescape_func(replace_match.group(1))
 
         elif tool_type == "insert_content":
-            line_number_match = re.search(r'<line_number>(\d+)</line_number>', xml_content)
+            line_number_match = re.search(r'<args>.*?<line_number>(\d+)</line_number>.*?</args>', xml_content, re.DOTALL)
             if line_number_match:
                 params["line_number"] = int(line_number_match.group(1))
 
-            content_match = re.search(r'<content>(.*?)</content>', xml_content, re.DOTALL)
+            content_match = re.search(r'<args>.*?<content>(.*?)</content>.*?</args>', xml_content, re.DOTALL)
             if content_match:
                 params["content"] = unescape_func(content_match.group(1))
 
         elif tool_type == "ask_followup_question":
-            question_match = re.search(r'<question>(.*?)</question>', xml_content, re.DOTALL)
+            question_match = re.search(r'<args>.*?<question>(.*?)</question>.*?</args>', xml_content, re.DOTALL)
             if question_match:
                 params["question"] = unescape_func(question_match.group(1))
 
         elif tool_type == "attempt_completion":
-            result_match = re.search(r'<result>(.*?)</result>', xml_content, re.DOTALL)
+            result_match = re.search(r'<args>.*?<result>(.*?)</result>.*?</args>', xml_content, re.DOTALL)
             if result_match:
                 params["result"] = unescape_func(result_match.group(1))
 
         elif tool_type == "update_todo_list":
-            todos_match = re.search(r'<todos>(.*?)</todos>', xml_content, re.DOTALL)
+            todos_match = re.search(r'<args>.*?<todos>(.*?)</todos>.*?</args>', xml_content, re.DOTALL)
             if todos_match:
                 params["todos"] = unescape_func(todos_match.group(1))
 

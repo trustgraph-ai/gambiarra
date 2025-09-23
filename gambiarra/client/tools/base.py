@@ -162,15 +162,18 @@ class ToolManager:
             )
 
         try:
+            # Unwrap nested args structure for tool execution
+            unwrapped_params = self._unwrap_parameters(name, parameters)
+
             # Pre-execution
-            await tool.pre_execute(parameters)
+            await tool.pre_execute(unwrapped_params)
 
             # Execute
             logger.info(f"🔧 Executing tool: {name}")
-            result = await tool.execute(parameters)
+            result = await tool.execute(unwrapped_params)
 
             # Post-execution
-            result = await tool.post_execute(result, parameters)
+            result = await tool.post_execute(result, unwrapped_params)
 
             logger.info(f"✅ Tool {name} completed: {result.status}")
             return result
@@ -182,3 +185,23 @@ class ToolManager:
                 str(e),
                 {"tool": name, "parameters": parameters}
             )
+
+    def _unwrap_parameters(self, tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+        """Unwrap nested args structure to flat parameters for tool execution."""
+        if "args" not in parameters:
+            # Already in flat format, return as-is
+            return parameters
+
+        args = parameters["args"]
+
+        if tool_name == "read_file":
+            # Special case: read_file has args.file.path structure
+            if isinstance(args, dict) and "file" in args:
+                file_params = args["file"]
+                if isinstance(file_params, dict) and "path" in file_params:
+                    return {"path": file_params["path"]}
+            # Fallback to flat args
+            return args
+        else:
+            # Standard nested args: return the args content
+            return args

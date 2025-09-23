@@ -98,7 +98,7 @@ class XMLFormatValidator:
         if f"<{tool_name}>" in xml_content and f"</{tool_name}>" not in xml_content:
             errors.append(f"Missing closing tag for <{tool_name}>")
 
-        # Tool-specific structure validation
+        # Tool-specific structure validation - all tools now use nested args structure
         if tool_name == "read_file":
             # Should have nested structure: <read_file><args><file><path>...</path></file></args></read_file>
             if "<args>" not in xml_content:
@@ -111,9 +111,9 @@ class XMLFormatValidator:
         elif tool_name in ["write_to_file", "list_files", "search_files", "execute_command",
                           "search_and_replace", "insert_content", "list_code_definition_names",
                           "attempt_completion", "ask_followup_question", "update_todo_list"]:
-            # These should have flat structure
-            if "<args>" in xml_content or "<file>" in xml_content:
-                errors.append(f"{tool_name} should use flat structure, not nested")
+            # All tools now require nested args structure
+            if "<args>" not in xml_content:
+                errors.append(f"{tool_name} missing <args> element")
 
         return errors
 

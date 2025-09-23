@@ -34,14 +34,11 @@ class ToolValidator:
         self.error_history: List[ToolError] = []
         self.consecutive_mistake_count = 0
 
-        # Tool parameter schemas
+        # Tool parameter schemas - all tools now use nested args structure
         self.tool_schemas = {
             "read_file": {
-                "required": [],
-                "optional": [],
+                "nested_structure": True,
                 "args": {
-                    "required": [],
-                    "optional": [],
                     "file": {
                         "required": ["path"],
                         "optional": ["line_range"]
@@ -49,44 +46,74 @@ class ToolValidator:
                 }
             },
             "write_to_file": {
-                "required": ["path", "content", "line_count"],
-                "optional": []
+                "nested_structure": True,
+                "args": {
+                    "required": ["path", "content", "line_count"],
+                    "optional": []
+                }
             },
             "list_files": {
-                "required": ["path"],
-                "optional": ["recursive"]
+                "nested_structure": True,
+                "args": {
+                    "required": ["path"],
+                    "optional": ["recursive"]
+                }
             },
             "search_files": {
-                "required": ["path", "regex"],
-                "optional": ["file_pattern"]
+                "nested_structure": True,
+                "args": {
+                    "required": ["path", "regex"],
+                    "optional": ["file_pattern"]
+                }
             },
             "execute_command": {
-                "required": ["command"],
-                "optional": ["cwd"]
+                "nested_structure": True,
+                "args": {
+                    "required": ["command"],
+                    "optional": ["cwd"]
+                }
             },
             "search_and_replace": {
-                "required": ["path", "search", "replace"],
-                "optional": []
+                "nested_structure": True,
+                "args": {
+                    "required": ["path", "search", "replace"],
+                    "optional": []
+                }
             },
             "insert_content": {
-                "required": ["path", "line_number", "content"],
-                "optional": []
+                "nested_structure": True,
+                "args": {
+                    "required": ["path", "line_number", "content"],
+                    "optional": []
+                }
             },
             "list_code_definition_names": {
-                "required": ["path"],
-                "optional": []
+                "nested_structure": True,
+                "args": {
+                    "required": ["path"],
+                    "optional": []
+                }
             },
             "attempt_completion": {
-                "required": ["result"],
-                "optional": []
+                "nested_structure": True,
+                "args": {
+                    "required": ["result"],
+                    "optional": []
+                }
             },
             "ask_followup_question": {
-                "required": ["question"],
-                "optional": []
+                "nested_structure": True,
+                "args": {
+                    "required": ["question"],
+                    "optional": []
+                }
             },
             "update_todo_list": {
-                "required": ["todos"],
-                "optional": []
+                "nested_structure": True,
+                "args": {
+                    "required": ["todos"],
+                    "optional": []
+                }
             }
         }
 
@@ -106,12 +133,56 @@ class ToolValidator:
 
         schema = self.tool_schemas[tool_name]
 
-        # Handle special case for read_file with nested args structure
-        if tool_name == "read_file":
-            self._validate_read_file_parameters(parameters)
-            return
+        # All tools now use nested args structure
+        if schema.get("nested_structure", False):
+            self._validate_nested_args_parameters(tool_name, parameters, schema)
+        else:
+            # Legacy flat structure validation (kept for backward compatibility)
+            self._validate_flat_parameters(tool_name, parameters, schema)
 
-        # Validate required parameters
+        # Validate parameter types and values
+        self._validate_parameter_values(tool_name, parameters)
+
+        logger.debug(f"✅ Tool {tool_name} parameters validated successfully")
+
+    def _validate_nested_args_parameters(self, tool_name: str, parameters: Dict[str, Any], schema: Dict[str, Any]) -> None:
+        """Validate parameters for tools using nested args structure."""
+        if "args" not in parameters:
+            raise ValidationError(f"{tool_name} requires 'args' parameter")
+
+        args = parameters["args"]
+        if not isinstance(args, dict):
+            raise ValidationError("'args' parameter must be a dictionary")
+
+        args_schema = schema["args"]
+
+        # Handle special case for read_file with file.path structure
+        if tool_name == "read_file":
+            if "file" not in args:
+                raise ValidationError("read_file args must contain 'file' parameter")
+
+            file_params = args["file"]
+            if not isinstance(file_params, dict):
+                raise ValidationError("'file' parameter must be a dictionary")
+
+            file_schema = args_schema["file"]
+            required_file_params = file_schema.get("required", [])
+            for param in required_file_params:
+                if param not in file_params:
+                    raise ValidationError(f"read_file file parameter must contain '{param}'")
+        else:
+            # Standard nested args validation for other tools
+            required_params = args_schema.get("required", [])
+            for param in required_params:
+                if param not in args:
+                    raise ValidationError(
+                        f"Missing required parameter in args: {param}",
+                        parameter=param,
+                        details={"tool_name": tool_name, "required_params": required_params}
+                    )
+
+    def _validate_flat_parameters(self, tool_name: str, parameters: Dict[str, Any], schema: Dict[str, Any]) -> None:
+        """Validate parameters for tools using flat structure (legacy)."""
         required_params = schema.get("required", [])
         for param in required_params:
             if param not in parameters:
@@ -121,48 +192,36 @@ class ToolValidator:
                     details={"tool_name": tool_name, "required_params": required_params}
                 )
 
-        # Validate parameter types and values
-        self._validate_parameter_values(tool_name, parameters)
-
-        logger.debug(f"✅ Tool {tool_name} parameters validated successfully")
-
-    def _validate_read_file_parameters(self, parameters: Dict[str, Any]) -> None:
-        """Validate read_file specific nested structure."""
-        if "args" not in parameters:
-            raise ValidationError("read_file requires 'args' parameter")
-
-        args = parameters["args"]
-        if not isinstance(args, dict):
-            raise ValidationError("'args' parameter must be a dictionary")
-
-        if "file" not in args:
-            raise ValidationError("read_file args must contain 'file' parameter")
-
-        file_params = args["file"]
-        if not isinstance(file_params, dict):
-            raise ValidationError("'file' parameter must be a dictionary")
-
-        if "path" not in file_params:
-            raise ValidationError("read_file file parameter must contain 'path'")
-
     def _validate_parameter_values(self, tool_name: str, parameters: Dict[str, Any]) -> None:
         """Validate specific parameter values."""
 
-        # Validate path parameters
-        path_params = ["path"]
-        for param in path_params:
-            if param in parameters:
-                path_value = parameters[param]
+        # Extract args for nested structure tools
+        args = parameters.get("args", parameters)
+
+        # For read_file, path is in file.path
+        if tool_name == "read_file":
+            file_params = args.get("file", {})
+            if "path" in file_params:
+                path_value = file_params["path"]
                 if not isinstance(path_value, str) or not path_value.strip():
                     raise ValidationError(
-                        f"Parameter '{param}' must be a non-empty string",
-                        parameter=param
+                        "Parameter 'path' must be a non-empty string",
+                        parameter="path"
+                    )
+        else:
+            # For other tools, validate path in args
+            if "path" in args:
+                path_value = args["path"]
+                if not isinstance(path_value, str) or not path_value.strip():
+                    raise ValidationError(
+                        "Parameter 'path' must be a non-empty string",
+                        parameter="path"
                     )
 
         # Validate line_count for write_to_file
-        if tool_name == "write_to_file" and "line_count" in parameters:
+        if tool_name == "write_to_file" and "line_count" in args:
             try:
-                line_count = int(parameters["line_count"])
+                line_count = int(args["line_count"])
                 if line_count < 0:
                     raise ValidationError(
                         "line_count must be a non-negative integer",
@@ -175,8 +234,8 @@ class ToolValidator:
                 )
 
         # Validate recursive parameter for list_files
-        if tool_name == "list_files" and "recursive" in parameters:
-            recursive_value = parameters["recursive"]
+        if tool_name == "list_files" and "recursive" in args:
+            recursive_value = args["recursive"]
             if isinstance(recursive_value, str):
                 if recursive_value.lower() not in ["true", "false"]:
                     raise ValidationError(
@@ -190,9 +249,9 @@ class ToolValidator:
                 )
 
         # Validate line_number for insert_content
-        if tool_name == "insert_content" and "line_number" in parameters:
+        if tool_name == "insert_content" and "line_number" in args:
             try:
-                line_number = int(parameters["line_number"])
+                line_number = int(args["line_number"])
                 if line_number < 0:
                     raise ValidationError(
                         "line_number must be a non-negative integer (0 to append at end)",
