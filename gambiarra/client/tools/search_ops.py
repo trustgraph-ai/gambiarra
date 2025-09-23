@@ -16,45 +16,13 @@ logger = logging.getLogger(__name__)
 class CodebaseSearchTool(FileOperationTool):
     """Tool for semantic codebase search using various search strategies."""
 
-    name = "codebase_search"
-    description = "Search through the codebase for relevant code snippets and patterns"
+    @property
+    def name(self) -> str:
+        return "codebase_search"
 
     @property
     def risk_level(self) -> str:
         return "low"
-
-    parameters = {
-        "type": "object",
-        "properties": {
-            "query": {
-                "type": "string",
-                "description": "Search query (can be natural language or code patterns)"
-            },
-            "path": {
-                "type": "string",
-                "description": "Optional directory path to limit search scope",
-                "required": False
-            },
-            "file_types": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Optional file extensions to search (e.g., ['.py', '.js'])",
-                "required": False
-            },
-            "max_results": {
-                "type": "integer",
-                "description": "Maximum number of results to return",
-                "default": 20
-            },
-            "search_type": {
-                "type": "string",
-                "enum": ["semantic", "text", "regex", "auto"],
-                "description": "Type of search to perform",
-                "default": "auto"
-            }
-        },
-        "required": ["query"]
-    }
 
     def _is_code_file(self, file_path: str, file_types: Optional[List[str]] = None) -> bool:
         """Check if a file is a code file based on extension."""
@@ -280,50 +248,13 @@ class CodebaseSearchTool(FileOperationTool):
 class UpdateTodoListTool(FileOperationTool):
     """Tool for managing TODO lists in projects."""
 
-    name = "update_todo_list"
-    description = "Update and manage TODO lists for project tasks"
+    @property
+    def name(self) -> str:
+        return "update_todo_list"
 
     @property
     def risk_level(self) -> str:
         return "low"
-
-    parameters = {
-        "type": "object",
-        "properties": {
-            "action": {
-                "type": "string",
-                "enum": ["add", "update", "remove", "list", "complete"],
-                "description": "Action to perform on TODO list"
-            },
-            "todo_id": {
-                "type": "string",
-                "description": "ID of the TODO item (for update/remove/complete)",
-                "required": False
-            },
-            "description": {
-                "type": "string",
-                "description": "TODO item description (for add/update)",
-                "required": False
-            },
-            "priority": {
-                "type": "string",
-                "enum": ["low", "medium", "high", "critical"],
-                "description": "Priority level for the TODO",
-                "default": "medium"
-            },
-            "file_path": {
-                "type": "string",
-                "description": "Optional file path to associate with the TODO",
-                "required": False
-            },
-            "line_number": {
-                "type": "integer",
-                "description": "Optional line number in the file",
-                "required": False
-            }
-        },
-        "required": ["action"]
-    }
 
     def __init__(self):
         super().__init__()
