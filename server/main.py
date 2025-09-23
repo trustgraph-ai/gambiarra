@@ -279,6 +279,11 @@ async def handle_websocket_connection(connection_id: str, websocket: WebSocket):
                     await websocket.send_text(json.dumps(response))
 
             except Exception as handler_error:
+                # Log the exact error with full traceback for debugging
+                import traceback
+                logger.error(f"❌ Detailed error in message processing: {handler_error}")
+                logger.error(f"📍 Full traceback:\n{traceback.format_exc()}")
+
                 # Handle errors in message processing
                 recovery_result = await error_recovery_manager.handle_error(
                     handler_error,
@@ -638,8 +643,8 @@ def format_tool_result_for_ai(result: Dict[str, Any]) -> str:
     if result.get("status") != "success":
         return f"Tool failed: {result.get('error', 'Unknown error')}"
 
-    data = result.get("data", {})
-    metadata = result.get("metadata", {})
+    data = result.get("data", {}) or {}
+    metadata = result.get("metadata", {}) or {}
 
     # Format based on what kind of operation was performed
     if "files" in data and "directories" in data:
@@ -770,7 +775,7 @@ async def handle_tool_result(session_id: str, message: Dict[str, Any]) -> Dict[s
 
         # KiloCode pattern: Continue agentic loop until attempt_completion or no more tools
         # Safety limit to prevent infinite loops
-        recent_tool_count = sum(1 for msg in session.messages[-10:] if msg.role == "assistant" and msg.content and "Tool result:" in msg.content)
+        recent_tool_count = sum(1 for msg in session.messages[-10:] if msg.role == "assistant" and msg.content and "Tool result:" in (msg.content or ""))
 
         if recent_tool_count < 10:  # Increased safety limit
             logger.info(f"🤖 Continuing agentic loop (tool #{recent_tool_count + 1})")
