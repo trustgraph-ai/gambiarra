@@ -826,6 +826,65 @@ async def handle_tool_result(session_id: str, message: Dict[str, Any]) -> Dict[s
 
 def main():
     """Main entry point for the Gambiarra server."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Gambiarra Server - AI-powered coding assistant server",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  gambiarra-server                    # Start server with default settings
+  gambiarra-server --host 0.0.0.0    # Start server on all interfaces
+  gambiarra-server --port 9000       # Start server on port 9000
+  gambiarra-server --provider openai # Use OpenAI as default provider
+
+Environment variables:
+  GAMBIARRA_HOST                      # Server host (default: localhost)
+  GAMBIARRA_PORT                      # Server port (default: 8000)
+  GAMBIARRA_AI_PROVIDER               # AI provider (default: test)
+  OPENAI_API_KEY                      # OpenAI API key (for OpenAI provider)
+  TRUSTGRAPH_URL                      # TrustGraph server URL
+  TRUSTGRAPH_FLOW                     # TrustGraph flow ID
+        """
+    )
+
+    parser.add_argument(
+        "--host",
+        default=config.host,
+        help=f"Host to bind server to (default: {config.host})"
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=config.port,
+        help=f"Port to bind server to (default: {config.port})"
+    )
+    parser.add_argument(
+        "--provider",
+        choices=["test", "openai", "trustgraph"],
+        default=config.ai_provider,
+        help=f"Default AI provider (default: {config.ai_provider})"
+    )
+    parser.add_argument(
+        "--log-level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        default=config.log_level,
+        help=f"Logging level (default: {config.log_level})"
+    )
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        help="Enable auto-reload for development"
+    )
+
+    args = parser.parse_args()
+
+    # Update config with command line arguments
+    config.host = args.host
+    config.port = args.port
+    config.ai_provider = args.provider
+    config.log_level = args.log_level
+
     print("🚀 Starting Gambiarra Server...")
     print(f"📍 WebSocket endpoint: ws://{config.host}:{config.port}/ws")
     print(f"🌐 Health check: http://{config.host}:{config.port}/health")
@@ -844,7 +903,7 @@ def main():
         host=config.host,
         port=config.port,
         log_level=config.log_level.lower(),
-        reload=False
+        reload=args.reload
     )
 
 

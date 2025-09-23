@@ -390,16 +390,68 @@ async def health_check():
 
 def main():
     """Main entry point for the Gambiarra test LLM server."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Gambiarra Test LLM - OpenAI API compatible mock server for development",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  gambiarra-test-llm                  # Start test LLM on default port 8001
+  gambiarra-test-llm --port 9001     # Start test LLM on port 9001
+  gambiarra-test-llm --host localhost # Start test LLM on localhost only
+
+Supported intents:
+  hello           - Simple greeting response
+  read_file       - Mock file reading with tool calls
+  write_file      - Mock file writing with tool calls
+  search_files    - Mock file searching with tool calls
+  execute_command - Mock command execution with tool calls
+  complex_task    - Multi-step task with multiple tool calls
+  add_numbers     - Simple addition task with tool calls
+  fix_uvicorn_bug - Code debugging scenario
+
+Usage with Gambiarra:
+  Set GAMBIARRA_AI_PROVIDER=openai and OPENAI_API_BASE=http://localhost:8001/v1
+        """
+    )
+
+    parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="Host to bind server to (default: 0.0.0.0)"
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8001,
+        help="Port to bind server to (default: 8001)"
+    )
+    parser.add_argument(
+        "--log-level",
+        choices=["debug", "info", "warning", "error"],
+        default="info",
+        help="Logging level (default: info)"
+    )
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        help="Enable auto-reload for development"
+    )
+
+    args = parser.parse_args()
+
     print("🧠 Starting Gambiarra Test LLM Server...")
-    print("📍 OpenAI API compatible endpoint: http://localhost:8001")
+    print(f"📍 OpenAI API compatible endpoint: http://{args.host}:{args.port}")
     print("🔧 Use this as your AI provider for testing Gambiarra")
     print("📖 Supported intents: hello, read_file, write_file, search_files, execute_command, complex_task")
 
     uvicorn.run(
         app,
-        host="0.0.0.0",
-        port=8001,
-        log_level="info"
+        host=args.host,
+        port=args.port,
+        log_level=args.log_level,
+        reload=args.reload
     )
 
 
