@@ -331,6 +331,9 @@ class GambiarraClient:
             elif message_type == "tool_result_received":
                 await self._handle_tool_result_received(message)
 
+            elif message_type == "tool_denied":
+                await self._handle_tool_denied(message)
+
             else:
                 logger.warning(f"🤷 Unknown message type: {message_type}")
 
@@ -535,6 +538,15 @@ class GambiarraClient:
         execution_id = message.get("execution_id", "unknown")
         status = message.get("status", "unknown")
         logger.debug(f"✅ Server received tool result for execution {execution_id}: {status}")
+
+    async def _handle_tool_denied(self, message: Dict[str, Any]) -> None:
+        """Handle tool denial from server."""
+        reason = message.get("reason", "Unknown reason")
+        tool_name = message.get("tool_name", "unknown")
+        logger.warning(f"🚫 Tool {tool_name} denied by server: {reason}")
+        print(f"\n🚫 Tool denied: {tool_name}")
+        print(f"   Reason: {reason}")
+        print("   The AI may need to adjust its approach.")
 
     async def _send_message(self, message: Dict[str, Any]) -> None:
         """Send message to server."""
