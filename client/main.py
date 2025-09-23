@@ -26,6 +26,7 @@ from client.security.approval_manager import ApprovalManager, ToolApprovalReques
 from client.security.smart_approval_manager import SmartApprovalManager, SmartApprovalConfig
 from client.security.tool_repetition_detector import ToolRepetitionDetector
 from client.security.tool_validator import ToolValidator, ValidationError
+from client.context.file_context_tracker import FileContextTracker
 from client.config import ClientConfig
 
 # Configure logging
