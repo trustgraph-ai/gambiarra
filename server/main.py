@@ -362,7 +362,7 @@ async def handle_create_session(connection_id: str, message: Dict[str, Any]) -> 
 
 async def handle_user_message(session_id: str, message: Dict[str, Any]) -> None:
     """Handle user message - processes with AI and may trigger tool calls."""
-    session = await session_manager.get_session(session_id)
+    session = session_manager.get_session(session_id)
     if not session:
         raise ValueError(f"Session {session_id} not found")
 
@@ -447,7 +447,7 @@ async def process_ai_response(session_id: str, session):
             ErrorSeverity.HIGH,
             {
                 "session_id": session_id,
-                "provider": ai_provider_manager.get_provider_name(),
+                "provider": ai_provider_manager.default_provider,
                 "message_count": len(messages) if 'messages' in locals() else 0
             },
             session_id=session_id
@@ -759,7 +759,7 @@ async def handle_tool_result(session_id: str, message: Dict[str, Any]) -> Dict[s
     logger.info(f"🛠️ Tool result received for execution {execution_id}: {result['status']}")
 
     # Add tool result to session - KiloCode style: automatic agentic loop
-    session = await session_manager.get_session(session_id)
+    session = session_manager.get_session(session_id)
     if session:
         # Add a detailed tool result that AI can understand and act on
         tool_summary = format_tool_result_for_ai(result)

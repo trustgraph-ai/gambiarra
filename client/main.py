@@ -741,44 +741,21 @@ async def main():
     # Create and run client
     client = GambiarraClient(config)
 
-    # Create shutdown event for clean async signal handling
-    shutdown_event = asyncio.Event()
-
     def signal_handler(signum, frame):
         logger.info("🛑 Shutdown signal received")
-        client.running = False
-        # Set the shutdown event to wake up the main task
-        shutdown_event.set()
+        print("\n👋 Goodbye!")
+        sys.exit(0)
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
     try:
-        # Run client and shutdown monitoring concurrently
-        client_task = asyncio.create_task(client.run())
-        shutdown_task = asyncio.create_task(shutdown_event.wait())
-
-        # Wait for either the client to finish or shutdown signal
-        done, pending = await asyncio.wait(
-            [client_task, shutdown_task],
-            return_when=asyncio.FIRST_COMPLETED
-        )
-
-        # Cancel any remaining tasks
-        for task in pending:
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-
-        logger.info("🛑 Client shutdown initiated")
-        await client._cleanup()
-        logger.info("✅ Client shutdown complete")
-
+        await client.run()
+    except KeyboardInterrupt:
+        print("\n👋 Goodbye!")
+        sys.exit(0)
     except Exception as e:
         logger.error(f"❌ Client failed: {e}")
-        await client._cleanup()
         sys.exit(1)
 
 

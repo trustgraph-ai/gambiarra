@@ -145,18 +145,18 @@ class SessionManager:
 
             return session_id
 
-    async def get_session(self, session_id: str) -> Optional[Session]:
+    def get_session(self, session_id: str) -> Optional[Session]:
         """Get session by ID."""
         session = self.sessions.get(session_id)
         if session:
             session.update_activity()
         return session
 
-    async def get_session_by_connection(self, connection_id: str) -> Optional[Session]:
+    def get_session_by_connection(self, connection_id: str) -> Optional[Session]:
         """Get session by connection ID."""
         session_id = self.connection_to_session.get(connection_id)
         if session_id:
-            return await self.get_session(session_id)
+            return self.get_session(session_id)
         return None
 
     async def cleanup_session(self, connection_id: str) -> None:
