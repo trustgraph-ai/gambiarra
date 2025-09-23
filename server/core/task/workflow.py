@@ -4,6 +4,7 @@ Implements complex multi-step operations based on KiloCode patterns.
 """
 
 import logging
+import time
 from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod

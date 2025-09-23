@@ -5,7 +5,8 @@ Provides rich conversation context tracking based on KiloCode patterns.
 
 import logging
 import time
-from typing import Dict, List, Any, Optional, Set
+import re
+from typing import Dict, List, Any, Optional, Set, Tuple
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -22,6 +23,13 @@ class FileContext:
     content_hash: str
     access_count: int = 0
     is_stale: bool = False
+
+    # Enhanced dependency tracking
+    dependencies: Set[str] = field(default_factory=set)  # Files this file depends on
+    dependents: Set[str] = field(default_factory=set)    # Files that depend on this file
+    language: Optional[str] = None
+    file_type: Optional[str] = None
+    last_analyzed: Optional[float] = None
 
 
 @dataclass
@@ -62,6 +70,165 @@ class ConversationContext:
     last_activity: float = field(default_factory=time.time)
 
 
+class FileDependencyAnalyzer:
+    """Analyzes file dependencies to understand project structure."""
+
+    # Language-specific import patterns
+    IMPORT_PATTERNS = {
+        "python": [
+            r"^from\s+([^\s]+)\s+import",
+            r"^import\s+([^\s,]+)",
+            r"^from\s+([^\s]+)\s+import\s+[^#]*",
+        ],
+        "javascript": [
+            r"^import.*from\s+['\"]([^'\"]+)['\"]",
+            r"^const.*=\s*require\(['\"]([^'\"]+)['\"]\)",
+            r"^import\s+['\"]([^'\"]+)['\"]",
+        ],
+        "typescript": [
+            r"^import.*from\s+['\"]([^'\"]+)['\"]",
+            r"^import\s+['\"]([^'\"]+)['\"]",
+            r"^const.*=\s*require\(['\"]([^'\"]+)['\"]\)",
+        ],
+        "java": [
+            r"^import\s+([^;]+);",
+            r"^package\s+([^;]+);",
+        ],
+        "go": [
+            r"^import\s+\"([^\"]+)\"",
+            r"^\s*\"([^\"]+)\"",  # Inside import blocks
+        ]
+    }
+
+    # File extension to language mapping
+    LANGUAGE_MAP = {
+        ".py": "python",
+        ".js": "javascript",
+        ".jsx": "javascript",
+        ".ts": "typescript",
+        ".tsx": "typescript",
+        ".java": "java",
+        ".go": "go",
+        ".c": "c",
+        ".cpp": "cpp",
+        ".h": "c",
+        ".hpp": "cpp"
+    }
+
+    @classmethod
+    def detect_language(cls, file_path: str) -> Optional[str]:
+        """Detect programming language from file extension."""
+        path_obj = Path(file_path)
+        return cls.LANGUAGE_MAP.get(path_obj.suffix.lower())
+
+    @classmethod
+    def analyze_dependencies(cls, file_path: str, content: str) -> Set[str]:
+        """Analyze file dependencies from content."""
+        language = cls.detect_language(file_path)
+        if not language or language not in cls.IMPORT_PATTERNS:
+            return set()
+
+        dependencies = set()
+        patterns = cls.IMPORT_PATTERNS[language]
+
+        for line in content.split('\n'):
+            line = line.strip()
+            if not line or line.startswith('#') or line.startswith('//'):
+                continue
+
+            for pattern in patterns:
+                match = re.match(pattern, line)
+                if match:
+                    import_path = match.group(1)
+                    # Resolve relative imports to actual file paths
+                    resolved_path = cls._resolve_import_path(file_path, import_path, language)
+                    if resolved_path:
+                        dependencies.add(resolved_path)
+
+        return dependencies
+
+    @classmethod
+    def _resolve_import_path(cls, current_file: str, import_path: str, language: str) -> Optional[str]:
+        """Resolve import path to actual file path."""
+        current_dir = Path(current_file).parent
+
+        if language == "python":
+            # Handle relative imports
+            if import_path.startswith('.'):
+                # Relative import
+                parts = import_path.split('.')
+                relative_path = current_dir
+                for part in parts:
+                    if part:  # Skip empty parts from leading dots
+                        relative_path = relative_path / part
+
+                # Try .py extension
+                py_file = relative_path.with_suffix('.py')
+                if py_file.exists():
+                    return str(py_file)
+
+                # Try __init__.py in directory
+                init_file = relative_path / "__init__.py"
+                if init_file.exists():
+                    return str(init_file)
+            else:
+                # Absolute import - convert dots to path
+                parts = import_path.split('.')
+                # Try to find in current project
+                potential_path = current_dir
+                for part in parts:
+                    potential_path = potential_path / part
+
+                py_file = potential_path.with_suffix('.py')
+                if py_file.exists():
+                    return str(py_file)
+
+        elif language in ["javascript", "typescript"]:
+            # Handle relative imports
+            if import_path.startswith('./') or import_path.startswith('../'):
+                resolved = (current_dir / import_path).resolve()
+
+                # Try different extensions
+                for ext in ['.js', '.jsx', '.ts', '.tsx']:
+                    file_with_ext = resolved.with_suffix(ext)
+                    if file_with_ext.exists():
+                        return str(file_with_ext)
+
+                # Try index files
+                if resolved.is_dir():
+                    for ext in ['.js', '.jsx', '.ts', '.tsx']:
+                        index_file = resolved / f"index{ext}"
+                        if index_file.exists():
+                            return str(index_file)
+
+        return None
+
+    @classmethod
+    def get_file_type(cls, file_path: str) -> str:
+        """Get file type classification."""
+        path_obj = Path(file_path)
+        name = path_obj.name.lower()
+        suffix = path_obj.suffix.lower()
+
+        # Special files
+        if name in ['readme.md', 'readme.txt', 'readme']:
+            return "documentation"
+        elif name in ['package.json', 'requirements.txt', 'cargo.toml', 'pom.xml']:
+            return "config"
+        elif name.startswith('.'):
+            return "config"
+        elif suffix in ['.md', '.txt', '.rst']:
+            return "documentation"
+        elif suffix in ['.json', '.yaml', '.yml', '.toml', '.ini', '.cfg']:
+            return "config"
+        elif '.test.' in name or '.spec.' in name or name.endswith('_test.py') or name.endswith('_spec.py'):
+            return "test"
+        elif suffix in ['.py', '.js', '.jsx', '.ts', '.tsx', '.java', '.go', '.c', '.cpp']:
+            return "source"
+        else:
+            return "unknown"
+
+
 class ContextManager:
     """Manages conversation context and memory optimization."""
 
@@ -93,7 +260,7 @@ class ContextManager:
         return context
 
     def track_file_access(self, session_id: str, file_path: str, content: str) -> None:
-        """Track file access for context management."""
+        """Track file access for context management with dependency analysis."""
         context = self.get_context(session_id)
         if not context:
             return
@@ -115,6 +282,13 @@ class ContextManager:
             last_modified = time.time()
             size = len(content)
 
+        # Detect language and file type
+        language = FileDependencyAnalyzer.detect_language(file_path)
+        file_type = FileDependencyAnalyzer.get_file_type(file_path)
+
+        # Analyze dependencies
+        dependencies = FileDependencyAnalyzer.analyze_dependencies(file_path, content)
+
         # Update or create file context
         if file_path in context.file_contexts:
             file_ctx = context.file_contexts[file_path]
@@ -127,7 +301,14 @@ class ContextManager:
                 file_ctx.last_modified = last_modified
                 file_ctx.content_hash = content_hash
                 file_ctx.size = size
-                logger.debug(f"📄 File {file_path} marked as stale")
+
+                # Update dependency analysis
+                file_ctx.dependencies = dependencies
+                file_ctx.language = language
+                file_ctx.file_type = file_type
+                file_ctx.last_analyzed = time.time()
+
+                logger.debug(f"📄 File {file_path} updated with {len(dependencies)} dependencies")
         else:
             context.file_contexts[file_path] = FileContext(
                 path=file_path,
@@ -135,10 +316,134 @@ class ContextManager:
                 last_modified=last_modified,
                 size=size,
                 content_hash=content_hash,
-                access_count=1
+                access_count=1,
+                dependencies=dependencies,
+                language=language,
+                file_type=file_type,
+                last_analyzed=time.time()
             )
 
-        logger.debug(f"📁 Tracked file access: {file_path}")
+        # Update bidirectional dependencies
+        self._update_dependency_graph(context, file_path, dependencies)
+
+        logger.debug(f"📁 Tracked file access: {file_path} ({file_type}, {len(dependencies)} deps)")
+
+    def _update_dependency_graph(self, context: ConversationContext, file_path: str, dependencies: Set[str]) -> None:
+        """Update bidirectional dependency graph."""
+        # Clear old dependencies for this file
+        for dep_path, file_ctx in context.file_contexts.items():
+            if file_path in file_ctx.dependents:
+                file_ctx.dependents.remove(file_path)
+
+        # Add new dependencies
+        for dep_path in dependencies:
+            if dep_path in context.file_contexts:
+                context.file_contexts[dep_path].dependents.add(file_path)
+
+    def get_file_dependencies(self, session_id: str, file_path: str, recursive: bool = False) -> Set[str]:
+        """Get dependencies of a file."""
+        context = self.get_context(session_id)
+        if not context or file_path not in context.file_contexts:
+            return set()
+
+        file_ctx = context.file_contexts[file_path]
+        dependencies = file_ctx.dependencies.copy()
+
+        if recursive:
+            # Recursively get dependencies of dependencies
+            visited = {file_path}
+            to_visit = list(dependencies)
+
+            while to_visit:
+                current = to_visit.pop()
+                if current in visited or current not in context.file_contexts:
+                    continue
+
+                visited.add(current)
+                current_deps = context.file_contexts[current].dependencies
+                dependencies.update(current_deps)
+                to_visit.extend(current_deps - visited)
+
+        return dependencies
+
+    def get_file_dependents(self, session_id: str, file_path: str, recursive: bool = False) -> Set[str]:
+        """Get files that depend on this file."""
+        context = self.get_context(session_id)
+        if not context or file_path not in context.file_contexts:
+            return set()
+
+        file_ctx = context.file_contexts[file_path]
+        dependents = file_ctx.dependents.copy()
+
+        if recursive:
+            # Recursively get dependents of dependents
+            visited = {file_path}
+            to_visit = list(dependents)
+
+            while to_visit:
+                current = to_visit.pop()
+                if current in visited or current not in context.file_contexts:
+                    continue
+
+                visited.add(current)
+                current_deps = context.file_contexts[current].dependents
+                dependents.update(current_deps)
+                to_visit.extend(current_deps - visited)
+
+        return dependents
+
+    def get_files_by_type(self, session_id: str, file_type: str) -> List[str]:
+        """Get files of a specific type."""
+        context = self.get_context(session_id)
+        if not context:
+            return []
+
+        return [
+            path for path, file_ctx in context.file_contexts.items()
+            if file_ctx.file_type == file_type
+        ]
+
+    def get_files_by_language(self, session_id: str, language: str) -> List[str]:
+        """Get files of a specific programming language."""
+        context = self.get_context(session_id)
+        if not context:
+            return []
+
+        return [
+            path for path, file_ctx in context.file_contexts.items()
+            if file_ctx.language == language
+        ]
+
+    def find_related_files(self, session_id: str, file_path: str) -> Dict[str, List[str]]:
+        """Find files related to the given file."""
+        context = self.get_context(session_id)
+        if not context or file_path not in context.file_contexts:
+            return {}
+
+        file_ctx = context.file_contexts[file_path]
+
+        related = {
+            "dependencies": list(file_ctx.dependencies),
+            "dependents": list(file_ctx.dependents),
+            "same_language": [],
+            "same_directory": []
+        }
+
+        # Find files in same language
+        if file_ctx.language:
+            related["same_language"] = [
+                path for path, ctx in context.file_contexts.items()
+                if ctx.language == file_ctx.language and path != file_path
+            ]
+
+        # Find files in same directory
+        file_dir = str(Path(file_path).parent)
+        related["same_directory"] = [
+            path for path in context.file_contexts.keys()
+            if str(Path(path).parent) == file_dir and path != file_path
+        ]
+
+        return related
 
     def track_tool_call(self, session_id: str, tool_name: str, parameters: Dict[str, Any],
                        result: Optional[Dict[str, Any]] = None, duration_ms: Optional[float] = None) -> None:

@@ -27,6 +27,9 @@ from server.core.tools.parser import ToolCallParser
 from server.core.tools.registry import get_tool_registry
 from server.core.tools.validator import validate_xml_tool_call
 from server.core.session.context import get_context_manager
+from server.core.events.bus import get_event_bus, EventTypes, publish_event
+from server.core.task.manager import get_task_manager
+from server.core.task.handlers import register_all_handlers
 
 # Configure logging
 logging.basicConfig(
@@ -46,6 +49,8 @@ error_recovery_manager = ErrorRecoveryManager()
 # New modular managers
 context_manager = get_context_manager()
 tool_registry = get_tool_registry()
+event_bus = get_event_bus()
+task_manager = get_task_manager()
 
 # Store pending tool requests
 pending_tool_requests = {}
@@ -63,10 +68,38 @@ async def lifespan(app: FastAPI):
     )
     logger.info("✅ AI providers initialized")
 
+    # Start event-driven components
+    await event_bus.start()
+    await task_manager.start()
+
+    # Register event handlers
+    register_all_handlers()
+
+    # Publish system startup event
+    await publish_event(
+        event_type=EventTypes.SYSTEM_STARTUP,
+        data={"server_version": "1.0.0", "providers": list(ai_provider_manager.available_providers())},
+        source="server_main"
+    )
+
+    logger.info("✅ Event-driven architecture initialized")
+
     yield
 
     # Cleanup
     logger.info("🛑 Shutting down Gambiarra Server...")
+
+    # Publish system shutdown event
+    await publish_event(
+        event_type=EventTypes.SYSTEM_SHUTDOWN,
+        data={"reason": "server_shutdown"},
+        source="server_main"
+    )
+
+    # Stop event-driven components
+    await task_manager.stop()
+    await event_bus.stop()
+
     await websocket_manager.disconnect_all()
     await session_manager.cleanup_all()
     logger.info("✅ Cleanup completed")
@@ -365,6 +398,18 @@ async def handle_create_session(connection_id: str, message: Dict[str, Any]) -> 
     session_id = await session_manager.create_session(
         connection_id=connection_id,
         config=config
+    )
+
+    # Publish session creation event
+    await publish_event(
+        event_type=EventTypes.SESSION_CREATED,
+        data={
+            "connection_id": connection_id,
+            "working_directory": config.get("working_directory", "."),
+            "config": config
+        },
+        source="session_manager",
+        session_id=session_id
     )
 
     logger.info(f"🎯 Created session {session_id} for connection {connection_id}")
