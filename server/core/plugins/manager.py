@@ -39,6 +39,30 @@ class PluginManager:
         self.dependency_graph: Dict[str, Set[str]] = {}
         self.event_bus = get_event_bus()
 
+    def list_loaded_plugins(self) -> Dict[str, Dict[str, Any]]:
+        """Get information about all loaded plugins."""
+        return {
+            name: {
+                "metadata": plugin.metadata.__dict__,
+                "status": plugin.status.value,
+                "type": plugin.metadata.plugin_type.value
+            }
+            for name, plugin in self.plugins.items()
+        }
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get plugin manager statistics."""
+        total_plugins = len(self.plugins)
+        active_plugins = sum(1 for p in self.plugins.values() if p.status == PluginStatus.ACTIVE)
+        failed_plugins = sum(1 for p in self.plugins.values() if p.status == PluginStatus.ERROR)
+
+        return {
+            "loaded_plugins": total_plugins,
+            "active_plugins": active_plugins,
+            "failed_loads": failed_plugins,
+            "plugin_directories": self.plugin_directories
+        }
+
     async def initialize(self) -> None:
         """Initialize the plugin manager."""
         logger.info("🔌 Initializing plugin manager...")

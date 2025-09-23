@@ -169,6 +169,9 @@ async def health_check():
     """Detailed health check for monitoring."""
     ai_status = await ai_provider_manager.health_check()
 
+    # Check system health including degraded mode
+    system_status = degraded_mode_manager.get_system_status()
+
     return {
         "status": "healthy",
         "services": {
@@ -180,6 +183,11 @@ async def health_check():
             "websocket_connections": websocket_manager.connection_count(),
             "active_sessions": session_manager.active_session_count(),
             "total_sessions": session_manager.total_session_count()
+        },
+        "system": system_status,
+        "performance": {
+            "connection_pools": connection_pool_manager.get_all_stats(),
+            "request_batchers": batcher_manager.get_all_stats()
         }
     }
 
@@ -351,6 +359,12 @@ async def handle_websocket_connection(connection_id: str, websocket: WebSocket):
                 logger.error(f"❌ Detailed error in message processing: {handler_error}")
                 logger.error(f"📍 Full traceback:\n{traceback.format_exc()}")
 
+                # Report component failure for degraded mode monitoring
+                await degraded_mode_manager.report_component_failure(
+                    "websocket_manager",
+                    f"Message processing error: {handler_error}"
+                )
+
                 # Handle errors in message processing
                 recovery_result = await error_recovery_manager.handle_error(
                     handler_error,
@@ -518,6 +532,12 @@ async def process_ai_response(session_id: str, session):
 
     except Exception as e:
         logger.error(f"❌ Error processing AI response: {e}")
+
+        # Report AI provider failure for degraded mode monitoring
+        await degraded_mode_manager.report_component_failure(
+            "ai_provider",
+            f"AI processing error: {e}"
+        )
 
         # Handle error with recovery manager
         recovery_result = await error_recovery_manager.handle_error(
