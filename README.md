@@ -7,49 +7,77 @@
 
 > **Gambiarra** is a Brazilian Portuguese term meaning "creative improvised solution" - perfect for an AI that helps you solve coding problems!
 
-## Architecture
+## Features
 
-- **🔒 Client-Side Security**: All file operations happen locally for maximum security
-- **🧠 Server-Side AI**: AI providers and prompt orchestration handled server-side
-- **⚡ Real-Time Communication**: WebSocket-based bidirectional messaging
-- **🛡️ Tool Approval**: User-controlled approval workflow for all operations
-- **🔧 KiloCode Compatible**: Uses the same XML tool format and prompt system
+🔒 **Security-First Design**: Client-side file operations with comprehensive security validation
+🤖 **AI-Powered**: Server-side AI orchestration with multiple provider support (OpenAI, TrustGraph, Test)
+🔌 **Plugin System**: Dynamic tool loading and extensibility
+⚡ **High Performance**: Connection pooling, request batching, and fault tolerance
+🌐 **Real-time Communication**: WebSocket-based bidirectional communication
+🛡️ **Fault Tolerance**: Circuit breakers and graceful degradation
+📊 **Event-Driven**: Modern event-driven architecture with task management
+🎯 **Tool Management**: Comprehensive tool registry with versioning and validation
+🔧 **KiloCode Compatible**: Uses the same XML tool format and prompt system
 
 ## Quick Start
 
-### 1. Install Dependencies
+### Installation
 
 ```bash
+# Install from source (development)
+git clone https://github.com/gambiarra-team/gambiarra.git
 cd gambiarra
-pip install -r requirements.txt
+pip install -e .
+
+# Or install from PyPI (when published)
+pip install gambiarra
 ```
 
-### 2. Start the Test LLM Server
+### Usage
 
+**Start the server:**
 ```bash
-# Terminal 1: Start the dummy OpenAI server for testing
-cd gambiarra
-python run_test_llm.py
+# Using entry point (recommended)
+gambiarra-server
+
+# With custom settings
+gambiarra-server --host 0.0.0.0 --port 9000 --provider openai
+
+# Using module invocation
+python -m gambiarra.server
+
+# Get help
+gambiarra-server --help
 ```
 
-The test LLM server will start at `http://localhost:8001` and provide predictable responses for testing.
-
-### 3. Start the Gambiarra Server
-
+**Start the client:**
 ```bash
-# Terminal 2: Start the main Gambiarra server
-cd gambiarra
-python run_server.py
+# Using entry point (recommended)
+gambiarra-client
+
+# With custom workspace
+gambiarra-client --workspace /path/to/project
+
+# Using module invocation
+python -m gambiarra.client
+
+# Get help
+gambiarra-client --help
 ```
 
-The server will start at `http://localhost:8000` with WebSocket endpoint at `/ws`.
-
-### 4. Run the Client
-
+**Start the test LLM (for development):**
 ```bash
-# Terminal 3: Start the client in your project directory
-cd gambiarra
-python run_client.py --workspace /path/to/your/project
+# Using entry point (recommended)
+gambiarra-test-llm
+
+# With custom settings
+gambiarra-test-llm --port 9001 --host localhost
+
+# Using module invocation
+python -m gambiarra.test_llm
+
+# Get help
+gambiarra-test-llm --help
 ```
 
 ## Architecture Overview
@@ -115,6 +143,60 @@ export GAMBIARRA_WORKSPACE=/path/to/project
 export GAMBIARRA_AUTO_APPROVE_READS=true
 export GAMBIARRA_COMMAND_TIMEOUT=30
 export GAMBIARRA_LOG_LEVEL=INFO
+```
+
+## Command Line Options
+
+### Server Options
+
+```bash
+gambiarra-server --help
+```
+
+Available options:
+- `--host HOST` - Host to bind server to (default: localhost)
+- `--port PORT` - Port to bind server to (default: 8000)
+- `--provider PROVIDER` - AI provider: test, openai, trustgraph (default: test)
+- `--log-level LEVEL` - Logging level: DEBUG, INFO, WARNING, ERROR (default: INFO)
+- `--reload` - Enable auto-reload for development
+
+### Client Options
+
+```bash
+gambiarra-client --help
+```
+
+Available options:
+- `--workspace PATH` - Workspace root directory (default: current directory)
+- `--server-url URL` - Server WebSocket URL (default: ws://localhost:8000/ws)
+- `--auto-approve-reads` - Auto-approve read operations
+- `--command-timeout SECONDS` - Command execution timeout
+- `--log-level LEVEL` - Logging level
+
+### Test LLM Options
+
+```bash
+gambiarra-test-llm --help
+```
+
+Available options:
+- `--host HOST` - Host to bind server to (default: 0.0.0.0)
+- `--port PORT` - Port to bind server to (default: 8001)
+- `--log-level LEVEL` - Logging level: debug, info, warning, error (default: info)
+- `--reload` - Enable auto-reload for development
+
+## Module Invocation
+
+You can also run components using Python's module system:
+
+```bash
+# Show package information
+python -m gambiarra
+
+# Start components
+python -m gambiarra.server
+python -m gambiarra.client
+python -m gambiarra.test_llm
 ```
 
 ## Usage Examples
