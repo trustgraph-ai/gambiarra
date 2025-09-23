@@ -212,14 +212,12 @@ class GambiarraClient:
 
         while self.running:
             try:
-                # Get user input with timeout to allow for cancellation
-                try:
-                    user_input = await asyncio.wait_for(
-                        aioconsole.ainput("\n🤖 You: "),
-                        timeout=1.0  # Check running flag every second
-                    )
-                except asyncio.TimeoutError:
-                    continue  # Check if still running
+                # Check if still running before prompting
+                if not self.running:
+                    break
+
+                # Get user input without timeout - cancellation will handle shutdown
+                user_input = await aioconsole.ainput("\n🤖 You: ")
 
                 # Handle special commands
                 cmd = user_input.lower().strip()
@@ -459,7 +457,7 @@ class GambiarraClient:
             tool_name,
             result.data or result.error or "No result data",
             success=(result.status == "success"),
-            {
+            metadata={
                 "execution_id": execution_id,
                 "status": result.status,
                 "metadata": result.metadata
@@ -775,12 +773,12 @@ async def main():
                 pass
 
         logger.info("🛑 Client shutdown initiated")
-        await client.cleanup()
+        await client._cleanup()
         logger.info("✅ Client shutdown complete")
 
     except Exception as e:
         logger.error(f"❌ Client failed: {e}")
-        await client.cleanup()
+        await client._cleanup()
         sys.exit(1)
 
 
