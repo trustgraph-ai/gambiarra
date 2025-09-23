@@ -22,6 +22,12 @@ from server.tools.mode_filter import ToolModeFilter, OperatingMode
 from server.error_handling import ErrorRecoveryManager, ErrorCategory, ErrorSeverity
 from server.config import ServerConfig
 
+# New modular components
+from server.core.tools.parser import ToolCallParser
+from server.core.tools.registry import get_tool_registry
+from server.core.tools.validator import validate_xml_tool_call
+from server.core.session.context import get_context_manager
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -491,8 +497,8 @@ def parse_tool_calls(content: str) -> list:
     tool_calls = []
     for tool_name, tool_content in matches:
         if tool_name in ["read_file", "write_to_file", "search_files", "execute_command", "list_files", "search_and_replace"]:
-            # Parse parameters from XML content
-            params = parse_xml_parameters(tool_content)
+            # Parse parameters from XML content using new parser
+            params = ToolCallParser.parse_xml_parameters(tool_content)
             tool_calls.append({
                 "name": tool_name,
                 "parameters": params
@@ -500,82 +506,7 @@ def parse_tool_calls(content: str) -> list:
 
     return tool_calls
 
-def parse_xml_parameters(xml_content: str) -> dict:
-    """Parse parameters from XML tool content."""
-    import re
-    import html
-
-    def unescape_content(content: str) -> str:
-        """Unescape HTML entities in content."""
-        if content:
-            return html.unescape(content)
-        return content
-
-    params = {}
-
-    # Extract path
-    path_match = re.search(r'<path>(.*?)</path>', xml_content)
-    if path_match:
-        params["path"] = unescape_content(path_match.group(1))
-
-    # Extract other common parameters
-    content_match = re.search(r'<content>(.*?)</content>', xml_content, re.DOTALL)
-    if content_match:
-        params["content"] = unescape_content(content_match.group(1))
-
-    regex_match = re.search(r'<regex>(.*?)</regex>', xml_content)
-    if regex_match:
-        params["regex"] = unescape_content(regex_match.group(1))
-
-    command_match = re.search(r'<command>(.*?)</command>', xml_content)
-    if command_match:
-        params["command"] = unescape_content(command_match.group(1))
-
-    # Extract search and replace parameters
-    search_match = re.search(r'<search>(.*?)</search>', xml_content, re.DOTALL)
-    if search_match:
-        params["search"] = unescape_content(search_match.group(1))
-
-    replace_match = re.search(r'<replace>(.*?)</replace>', xml_content, re.DOTALL)
-    if replace_match:
-        params["replace"] = unescape_content(replace_match.group(1))
-
-    # Extract line_count parameter for write_to_file
-    line_count_match = re.search(r'<line_count>(\d+)</line_count>', xml_content)
-    if line_count_match:
-        params["line_count"] = line_count_match.group(1)
-
-    # Extract line_number parameter for insert_content
-    line_number_match = re.search(r'<line_number>(\d+)</line_number>', xml_content)
-    if line_number_match:
-        params["line_number"] = line_number_match.group(1)
-
-    # Extract recursive parameter for list_files
-    recursive_match = re.search(r'<recursive>(true|false)</recursive>', xml_content)
-    if recursive_match:
-        params["recursive"] = recursive_match.group(1)
-
-    # Extract file_pattern parameter for search_files
-    file_pattern_match = re.search(r'<file_pattern>(.*?)</file_pattern>', xml_content)
-    if file_pattern_match:
-        params["file_pattern"] = unescape_content(file_pattern_match.group(1))
-
-    # Extract question parameter for ask_followup_question
-    question_match = re.search(r'<question>(.*?)</question>', xml_content, re.DOTALL)
-    if question_match:
-        params["question"] = unescape_content(question_match.group(1))
-
-    # Extract result parameter for attempt_completion
-    result_match = re.search(r'<result>(.*?)</result>', xml_content, re.DOTALL)
-    if result_match:
-        params["result"] = unescape_content(result_match.group(1))
-
-    # Extract todos parameter for update_todo_list
-    todos_match = re.search(r'<todos>(.*?)</todos>', xml_content, re.DOTALL)
-    if todos_match:
-        params["todos"] = unescape_content(todos_match.group(1))
-
-    return params
+# XML parser function removed - now using modular ToolCallParser
 
 async def request_tool_approval(session_id: str, tool_call: dict, websocket: WebSocket):
     """Request user approval for tool execution."""
