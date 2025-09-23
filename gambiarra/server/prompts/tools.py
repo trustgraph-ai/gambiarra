@@ -147,10 +147,11 @@ Usage:
 </list_code_definition_names>
 
 ## attempt_completion
-Description: Signal that you have completed the user's task. Use this tool when you have successfully accomplished what the user asked for.
+Description: After each tool use, the user will respond with the result of that tool use, i.e. if it succeeded or failed, along with any reasons for failure. Once you've received the results of tool uses and can confirm that the task is complete, use this tool to present the result of your work to the user. The user may respond with feedback if they are not satisfied with the result, which you can use to make improvements and try again.
+IMPORTANT NOTE: This tool CANNOT be used until you've confirmed from the user that any previous tool uses were successful. Before using this tool, ensure all tasks are complete and tested.
 Parameters:
 - args: (required) Contains the completion specification
-  - result: (required) A description of what was accomplished
+  - result: (required) The result of the task. Formulate this result in a way that is final and does not require further input from the user. Don't end your result with questions or offers for further assistance.
 
 Usage:
 <attempt_completion>
@@ -160,7 +161,7 @@ Usage:
 </attempt_completion>
 
 ## ask_followup_question
-Description: Ask the user a follow-up question when you need clarification or additional information to complete the task.
+Description: Ask the user a follow-up question when you need clarification or additional information to complete the task. Use this when the task requirements are ambiguous or when you need to make important decisions that require user input.
 Parameters:
 - args: (required) Contains the question specification
   - question: (required) The question to ask the user
@@ -173,7 +174,7 @@ Usage:
 </ask_followup_question>
 
 ## update_todo_list
-Description: Create or update a todo list to track progress on complex tasks. Use markdown checkbox format.
+Description: Create or update a todo list to track progress on complex tasks. Use markdown checkbox format. This helps you organize multi-step tasks and ensures nothing is forgotten.
 Parameters:
 - args: (required) Contains the todo list specification
   - todos: (required) The todo list in markdown format
@@ -188,7 +189,146 @@ Usage:
 - [ ] Write tests
 </todos>
 </args>
-</update_todo_list>"""
+</update_todo_list>
+
+## apply_diff
+Description: Apply a unified diff patch to a file. Use this tool when you have a specific diff/patch that needs to be applied to modify a file. This is more efficient than search_and_replace for larger changes.
+Parameters:
+- args: (required) Contains the diff specification
+  - path: (required) The file path to apply the diff to (relative to the current workspace directory)
+  - diff: (required) The unified diff content to apply
+  - start_line: (optional) The starting line number for context
+
+Usage:
+<apply_diff>
+<args>
+<path>src/config.py</path>
+<diff>@@ -10,3 +10,5 @@
+ DEBUG = False
+ PORT = 8080
+ HOST = 'localhost'
++# Added new configuration
++MAX_CONNECTIONS = 100
++TIMEOUT = 30</diff>
+</args>
+</apply_diff>
+
+## multi_apply_diff
+Description: Apply multiple diff patches to different files efficiently in a single operation. This is useful when you need to make coordinated changes across multiple files.
+Parameters:
+- args: (required) Contains the multi-diff specification
+  - diffs: (required) Array of diff operations
+    - path: (required) The file path for this diff
+    - diff: (required) The unified diff content
+    - start_line: (optional) The starting line number for context
+  - continue_on_error: (optional) Whether to continue applying other diffs if one fails (default: false)
+
+Usage:
+<multi_apply_diff>
+<args>
+<diffs>
+  <diff>
+    <path>src/module1.py</path>
+    <diff>@@ -5,2 +5,3 @@
+ import os
++import sys
+ import json</diff>
+  </diff>
+  <diff>
+    <path>src/module2.py</path>
+    <diff>@@ -10,2 +10,3 @@
+ def process():
++    # Added processing logic
+     pass</diff>
+  </diff>
+</diffs>
+<continue_on_error>false</continue_on_error>
+</args>
+</multi_apply_diff>
+
+## edit_file
+Description: Use this tool to make intelligent edits to a file. This tool understands context and can make complex edits with minimal specification. You should specify only the lines you want to change, using special comments to represent unchanged code.
+Parameters:
+- args: (required) Contains the edit specification
+  - path: (required) The target file to modify (full path relative to workspace)
+  - old_str: (required) The exact string to replace
+  - new_str: (required) The replacement string
+  - occurrence: (optional) Which occurrence to replace (1-based, 0 for all)
+  - context_lines: (optional) Number of context lines to show for verification (default: 3)
+
+Usage:
+<edit_file>
+<args>
+<path>src/app.py</path>
+<old_str>def process_data(data):
+    # Process the data
+    return data</old_str>
+<new_str>def process_data(data):
+    # Validate input
+    if not data:
+        raise ValueError("Data cannot be empty")
+    # Process the data
+    return data.strip().lower()</new_str>
+</args>
+</edit_file>
+
+## codebase_search
+Description: Find files most relevant to the search query using semantic search. Searches based on meaning rather than exact text matches. By default searches entire workspace. Reuse the user's exact wording unless there's a clear reason not to - their phrasing often helps semantic search.
+Parameters:
+- args: (required) Contains the search specification
+  - query: (required) The search query. Reuse the user's exact wording/question format unless there's a clear reason not to.
+  - path: (optional) Limit search to specific subdirectory (relative to the current workspace directory). Leave empty for entire workspace.
+  - file_types: (optional) File extensions to search (e.g., [".py", ".js"])
+  - max_results: (optional) Maximum number of results to return (default: 20)
+  - search_type: (optional) Type of search - "semantic", "text", "regex", or "auto" (default: "auto")
+
+Usage:
+<codebase_search>
+<args>
+<query>User login and password hashing</query>
+<path>src/auth</path>
+<file_types>[".py"]</file_types>
+<max_results>10</max_results>
+</args>
+</codebase_search>
+
+## new_task
+Description: Create a new subtask or task workflow when you need to organize complex work into smaller, manageable pieces. This helps track dependencies and progress.
+Parameters:
+- args: (required) Contains the task specification
+  - task_name: (required) Name/title of the new task
+  - description: (required) Detailed description of what the task should accomplish
+  - parent_task_id: (optional) ID of parent task if this is a subtask
+  - priority: (optional) Priority level - "low", "medium", "high", or "critical" (default: "medium")
+
+Usage:
+<new_task>
+<args>
+<task_name>Implement user authentication</task_name>
+<description>Add JWT-based authentication with login, logout, and token refresh endpoints</description>
+<priority>high</priority>
+</args>
+</new_task>
+
+## report_bug
+Description: Report a bug or issue encountered during task execution. This helps track problems that need to be resolved.
+Parameters:
+- args: (required) Contains the bug report specification
+  - title: (required) Brief title describing the bug
+  - description: (required) Detailed description of the bug and how to reproduce it
+  - severity: (optional) Severity level - "low", "medium", "high", or "critical" (default: "medium")
+  - error_message: (optional) Error message if any
+  - context: (optional) Additional context about when the bug occurred
+
+Usage:
+<report_bug>
+<args>
+<title>Database connection timeout</title>
+<description>Connection to PostgreSQL database times out after 30 seconds when running migration scripts</description>
+<severity>high</severity>
+<error_message>psycopg2.OperationalError: connection timeout expired</error_message>
+</args>
+</report_bug>"""
 
 
 def get_available_tools() -> List[str]:
@@ -204,5 +344,11 @@ def get_available_tools() -> List[str]:
         "list_code_definition_names",
         "attempt_completion",
         "ask_followup_question",
-        "update_todo_list"
+        "update_todo_list",
+        "apply_diff",
+        "multi_apply_diff",
+        "edit_file",
+        "codebase_search",
+        "new_task",
+        "report_bug"
     ]
