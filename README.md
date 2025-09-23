@@ -1,7 +1,7 @@
 # Gambiarra
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 **Gambiarra** is an AI-powered coding assistant with a secure client-server architecture, inspired by KiloCode. It features client-side file operations for security and server-side AI orchestration for intelligent code assistance.
 
@@ -351,7 +351,7 @@ wscat -c ws://localhost:8000/ws
 
 ## License
 
-MIT License - see LICENSE file for details.
+Apache License 2.0 - see [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
