@@ -83,7 +83,7 @@ gambiarra-test-llm --help
 ## Architecture Overview
 
 ```
-┌─────────────────┐    WebSocket     ┌─────────────────┐    HTTP      ┌─────────────────┐
+┌─────────────────┐    WebSocket   ┌─────────────────┐    HTTP     ┌─────────────────┐
 │                 │ ◄────────────► │                 │ ◄─────────► │                 │
 │  Gambiarra      │                │  Gambiarra      │             │  AI Provider    │
 │  Client         │                │  Server         │             │  (OpenAI/Test)  │
