@@ -831,7 +831,7 @@ class TestProtocolHandler:
         assert "messages_sent" in stats
         assert "uptime" in stats
 
-    def test_message_type_enum(self):
+    async def test_message_type_enum(self):
         """Test MessageType enum values."""
         expected_types = [
             "USER_MESSAGE",

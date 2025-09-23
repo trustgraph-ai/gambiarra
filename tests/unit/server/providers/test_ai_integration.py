@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import json
 import aiohttp
 from gambiarra.server.ai_integration.providers import (
-    AIProvider, TestAIProvider, AIProviderManager
+    AIProvider, DummyAIProvider, AIProviderManager
 )
 
 # Mock aiohttp and trustgraph dependencies
@@ -25,7 +25,7 @@ class TestAIProviderAbstract:
 
     def test_ai_provider_initialization(self):
         """Test AI provider initialization."""
-        from gambiarra.server.ai_integration.providers import TestAIProvider as ActualTestProvider
+        from gambiarra.server.ai_integration.providers import DummyAIProvider as ActualTestProvider
         provider = ActualTestProvider(
             api_key="test-key",
             base_url="http://localhost:8001/v1",
@@ -50,7 +50,7 @@ class TestTestAIProvider:
     @pytest.fixture
     def test_provider(self):
         """Create test AI provider instance."""
-        from gambiarra.server.ai_integration.providers import TestAIProvider as ActualTestProvider
+        from gambiarra.server.ai_integration.providers import DummyAIProvider as ActualTestProvider
         return ActualTestProvider()
 
     @pytest.fixture
@@ -125,10 +125,20 @@ class TestTestAIProvider:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 200
-            mock_response.content = AsyncMock()
-            mock_response.content.__aiter__ = AsyncMock(return_value=[])
 
-            mock_session.post.return_value.__aenter__.return_value = mock_response
+            # Properly mock async iterator
+            async def mock_content_iter():
+                # Return empty content to complete iteration without errors
+                return
+                yield  # This line never executes but makes it a generator
+
+            mock_response.content.__aiter__ = mock_content_iter
+
+            # Create a proper async context manager mock
+            async_cm = AsyncMock()
+            async_cm.__aenter__ = AsyncMock(return_value=mock_response)
+            async_cm.__aexit__ = AsyncMock(return_value=None)
+            mock_session.post.return_value = async_cm
             mock_get_session.return_value = mock_session
 
             chunks = []
@@ -173,7 +183,12 @@ class TestTestAIProvider:
             mock_response = AsyncMock()
             mock_response.status = 500
             mock_response.text = AsyncMock(return_value="Internal Server Error")
-            mock_session.post.return_value.__aenter__.return_value = mock_response
+
+            # Create proper async context manager mock
+            async_cm = AsyncMock()
+            async_cm.__aenter__ = AsyncMock(return_value=mock_response)
+            async_cm.__aexit__ = AsyncMock(return_value=None)
+            mock_session.post.return_value = async_cm
             mock_get_session.return_value = mock_session
 
             chunks = []
@@ -232,7 +247,7 @@ class TestAIProviderManager:
     @pytest.fixture
     def mock_test_provider(self):
         """Create mock test provider."""
-        from gambiarra.server.ai_integration.providers import TestAIProvider as ActualTestProvider
+        from gambiarra.server.ai_integration.providers import DummyAIProvider as ActualTestProvider
         provider = AsyncMock(spec=ActualTestProvider)
         provider.health_check = AsyncMock(return_value={"status": "healthy"})
         provider.stream_completion = AsyncMock()
@@ -248,20 +263,20 @@ class TestAIProviderManager:
         """Test getting a provider by name."""
         await provider_manager.initialize()
         provider = provider_manager.get_provider("test")
-        assert isinstance(provider, TestAIProvider)
+        assert isinstance(provider, DummyAIProvider)
 
     async def test_get_nonexistent_provider(self, provider_manager):
         """Test getting non-existent provider."""
         await provider_manager.initialize()
         provider = provider_manager.get_provider("nonexistent")
         # Should return default provider when nonexistent requested
-        assert isinstance(provider, TestAIProvider)
+        assert isinstance(provider, DummyAIProvider)
 
     async def test_get_default_provider(self, provider_manager):
         """Test getting default provider."""
         await provider_manager.initialize()
         provider = provider_manager.get_provider()  # No name = default
-        assert isinstance(provider, TestAIProvider)
+        assert isinstance(provider, DummyAIProvider)
 
     async def test_health_check_all_providers(self, provider_manager):
         """Test health check for all providers."""
@@ -302,7 +317,7 @@ class TestAIProviderManager:
 
     async def test_provider_failover(self, provider_manager):
         """Test provider failover mechanism."""
-        from gambiarra.server.ai_integration.providers import TestAIProvider as ActualTestProvider
+        from gambiarra.server.ai_integration.providers import DummyAIProvider as ActualTestProvider
         await provider_manager.initialize()
 
         # Register multiple providers
@@ -323,11 +338,11 @@ class TestAIProviderManager:
 
     async def test_concurrent_provider_calls(self, provider_manager):
         """Test concurrent calls to multiple providers."""
-        from gambiarra.server.ai_integration.providers import TestAIProvider as ActualTestProvider
+        from gambiarra.server.ai_integration.providers import DummyAIProvider as ActualTestProvider
         await provider_manager.initialize()
 
         # Register additional provider
-        provider2 = ActualTestProvider(model="gpt-3.5-turbo")
+        provider2 = DummyAIProvider(model="gpt-3.5-turbo")
         provider_manager.add_provider("test2", provider2)
 
         messages = [{"role": "user", "content": "Hello"}]
@@ -378,8 +393,19 @@ class TestAIProviderManager:
             mock_session = AsyncMock()
             mock_response = AsyncMock()
             mock_response.status = 200
-            mock_response.content.__aiter__ = AsyncMock(return_value=[])
-            mock_session.post.return_value.__aenter__.return_value = mock_response
+
+            # Properly mock async iterator
+            async def mock_content_iter():
+                return
+                yield  # Never executes but makes it a generator
+
+            mock_response.content.__aiter__ = mock_content_iter
+
+            # Create proper async context manager
+            async_cm = AsyncMock()
+            async_cm.__aenter__ = AsyncMock(return_value=mock_response)
+            async_cm.__aexit__ = AsyncMock(return_value=None)
+            mock_session.post.return_value = async_cm
             mock_get_session.return_value = mock_session
 
             # Make multiple requests

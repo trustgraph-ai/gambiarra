@@ -39,8 +39,8 @@ class AIProvider(ABC):
         pass
 
 
-class TestAIProvider(AIProvider):
-    """Test AI provider that connects to our dummy server."""
+class DummyAIProvider(AIProvider):
+    """Dummy AI provider for testing that connects to our test server."""
 
     def __init__(self, api_key: str = "test-key", base_url: str = "http://localhost:8001/v1", model: str = "gpt-4"):
         super().__init__(api_key, base_url, model)
@@ -339,7 +339,7 @@ class AIProviderManager:
     async def initialize(self, openai_api_key: str = None, trustgraph_url: str = None, trustgraph_flow: str = None):
         """Initialize AI providers."""
         # Initialize test provider (always available)
-        self.providers["test"] = TestAIProvider()
+        self.providers["test"] = DummyAIProvider()
 
         # Initialize OpenAI provider if API key provided
         if openai_api_key:
