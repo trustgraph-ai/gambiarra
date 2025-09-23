@@ -301,7 +301,7 @@ class TestToolValidation:
     def test_valid_xml_validation(self, valid_xml_tool_call):
         """Test validation of valid XML tool call."""
         result = validate_xml_tool_call(valid_xml_tool_call)
-        assert result is True
+        assert result.is_valid is True
 
     def test_invalid_xml_validation(self, invalid_xml_tool_call):
         """Test validation of invalid XML tool call."""
