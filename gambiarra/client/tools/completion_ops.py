@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 class AttemptCompletionTool(BaseTool):
     """Tool for attempting task completion and requesting user approval."""
 
+    def __init__(self, security_manager):
+        super().__init__(security_manager)
+
     @property
     def name(self) -> str:
         return "attempt_completion"
@@ -21,33 +24,20 @@ class AttemptCompletionTool(BaseTool):
     def risk_level(self) -> str:
         return "low"
 
-    def __init__(self, prevent_completion_with_todos: bool = False):
-        self.prevent_completion_with_todos = prevent_completion_with_todos
-
-    async def execute(self, result: str, command: Optional[str] = None, **kwargs) -> ToolResult:
+    async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
         """
         Attempt to complete the current task.
 
         Args:
-            result: Summary of what was accomplished
-            command: Optional verification command to run
+            parameters: Dictionary containing 'result' and optional 'command'
 
         Returns:
             ToolResult with completion status and next actions
         """
         try:
-            # Check for incomplete todos if enabled
-            if self.prevent_completion_with_todos and hasattr(self, '_todo_list'):
-                incomplete_todos = [todo for todo in self._todo_list if todo.get('status') != 'completed']
-                if incomplete_todos:
-                    return ToolResult(
-                        success=False,
-                        error="Cannot complete task while there are incomplete todos. Please finish all todos before attempting completion.",
-                        data={
-                            "incomplete_todos": incomplete_todos,
-                            "action_required": "Complete all todos first"
-                        }
-                    )
+            self.validate_parameters(parameters, ["result"], ["command"])
+            result = parameters["result"]
+            command = parameters.get("command")
 
             # Prepare completion data
             completion_data = {
@@ -58,22 +48,17 @@ class AttemptCompletionTool(BaseTool):
 
             if command:
                 completion_data["verification_command"] = command
-                # Note: In a full implementation, we might run the command here
-                # or prepare it for execution after user approval
 
-            # In a real implementation, this would trigger user approval workflow
-            # For now, we'll return the completion attempt data
-            return ToolResult(
-                success=True,
+            return ToolResult.success(
                 data=completion_data,
-                message=f"Task completion attempted: {result}"
+                metadata={"message": f"Task completion attempted: {result}"}
             )
 
         except Exception as e:
             logger.error(f"Error in attempt completion: {e}")
-            return ToolResult(
-                success=False,
-                error=f"Failed to attempt completion: {str(e)}"
+            return ToolResult.create_error(
+                code="execution_error",
+                message=f"Failed to attempt completion: {str(e)}"
             )
 
 
@@ -88,18 +73,21 @@ class AskFollowupQuestionTool(BaseTool):
     def risk_level(self) -> str:
         return "low"
 
-    async def execute(self, question: str, context: Optional[str] = None, **kwargs) -> ToolResult:
+    async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
         """
         Ask a followup question to the user.
 
         Args:
-            question: The question to ask
-            context: Optional context about why the question is needed
+            parameters: Dictionary containing 'question' and optional 'context'
 
         Returns:
             ToolResult with the question and instructions for user response
         """
         try:
+            self.validate_parameters(parameters, ["question"], ["context"])
+            question = parameters["question"]
+            context = parameters.get("context")
+
             question_data = {
                 "question": question,
                 "type": "followup_question",
@@ -110,17 +98,16 @@ class AskFollowupQuestionTool(BaseTool):
             if context:
                 question_data["context"] = context
 
-            return ToolResult(
-                success=True,
+            return ToolResult.success(
                 data=question_data,
-                message=f"Question for user: {question}"
+                metadata={"message": f"Question for user: {question}"}
             )
 
         except Exception as e:
             logger.error(f"Error asking followup question: {e}")
-            return ToolResult(
-                success=False,
-                error=f"Failed to ask question: {str(e)}"
+            return ToolResult.create_error(
+                code="execution_error",
+                message=f"Failed to ask question: {str(e)}"
             )
 
 
@@ -135,45 +122,45 @@ class NewTaskTool(BaseTool):
     def risk_level(self) -> str:
         return "low"
 
-    async def execute(self, task_name: str, description: str,
-                     parent_task_id: Optional[str] = None,
-                     priority: str = "medium", **kwargs) -> ToolResult:
+    async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
         """
         Create a new task or subtask.
 
         Args:
-            task_name: Name of the new task
-            description: Task description
-            parent_task_id: Optional parent task ID
-            priority: Task priority level
+            parameters: Dictionary containing task details
 
         Returns:
             ToolResult with new task information
         """
         try:
+            self.validate_parameters(
+                parameters,
+                ["task_name", "description"],
+                ["parent_task_id", "priority"]
+            )
+
             import uuid
 
             task_data = {
                 "task_id": str(uuid.uuid4()),
-                "name": task_name,
-                "description": description,
-                "priority": priority,
+                "name": parameters["task_name"],
+                "description": parameters["description"],
+                "priority": parameters.get("priority", "medium"),
                 "status": "created",
                 "created_at": asyncio.get_event_loop().time(),
-                "parent_task_id": parent_task_id
+                "parent_task_id": parameters.get("parent_task_id")
             }
 
-            return ToolResult(
-                success=True,
+            return ToolResult.success(
                 data=task_data,
-                message=f"Created new task: {task_name}"
+                metadata={"message": f"Created new task: {parameters['task_name']}"}
             )
 
         except Exception as e:
             logger.error(f"Error creating new task: {e}")
-            return ToolResult(
-                success=False,
-                error=f"Failed to create task: {str(e)}"
+            return ToolResult.create_error(
+                code="execution_error",
+                message=f"Failed to create task: {str(e)}"
             )
 
 
@@ -188,54 +175,50 @@ class ReportBugTool(BaseTool):
     def risk_level(self) -> str:
         return "low"
 
-    async def execute(self, title: str, description: str,
-                     severity: str = "medium",
-                     error_message: Optional[str] = None,
-                     context: Optional[Dict[str, Any]] = None, **kwargs) -> ToolResult:
+    async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
         """
         Report a bug or issue.
 
         Args:
-            title: Bug title
-            description: Bug description
-            severity: Severity level
-            error_message: Optional error message
-            context: Optional additional context
+            parameters: Dictionary containing bug details
 
         Returns:
             ToolResult with bug report information
         """
         try:
+            self.validate_parameters(
+                parameters,
+                ["title", "description"],
+                ["severity", "error_message", "context"]
+            )
+
             import uuid
 
             bug_report = {
                 "bug_id": str(uuid.uuid4()),
-                "title": title,
-                "description": description,
-                "severity": severity,
+                "title": parameters["title"],
+                "description": parameters["description"],
+                "severity": parameters.get("severity", "medium"),
                 "status": "reported",
                 "reported_at": asyncio.get_event_loop().time()
             }
 
-            if error_message:
-                bug_report["error_message"] = error_message
+            if parameters.get("error_message"):
+                bug_report["error_message"] = parameters["error_message"]
 
-            if context:
-                bug_report["context"] = context
+            if parameters.get("context"):
+                bug_report["context"] = parameters["context"]
 
-            # In a real implementation, this would integrate with a bug tracking system
-            # For now, we'll just log and return the report
-            logger.info(f"Bug reported: {title} - {severity}")
+            logger.info(f"Bug reported: {parameters['title']} - {bug_report['severity']}")
 
-            return ToolResult(
-                success=True,
+            return ToolResult.success(
                 data=bug_report,
-                message=f"Bug report created: {title}"
+                metadata={"message": f"Bug report created: {parameters['title']}"}
             )
 
         except Exception as e:
             logger.error(f"Error reporting bug: {e}")
-            return ToolResult(
-                success=False,
-                error=f"Failed to report bug: {str(e)}"
+            return ToolResult.create_error(
+                code="execution_error",
+                message=f"Failed to report bug: {str(e)}"
             )
