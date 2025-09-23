@@ -1,1 +1,0 @@
-# Gambiarra Client - Secure Local File Operations

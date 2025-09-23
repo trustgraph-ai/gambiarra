@@ -1,1 +1,0 @@
-# Client-side tool implementations for Gambiarra

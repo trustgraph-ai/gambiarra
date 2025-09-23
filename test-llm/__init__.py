@@ -1,1 +1,0 @@
-# Gambiarra Test LLM - OpenAI Compatible Mock Server
