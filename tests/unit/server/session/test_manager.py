@@ -123,13 +123,13 @@ class TestSession:
         assert test_session.messages == []
         assert test_session.pending_tools == {}
 
-    def test_add_message(self, test_session):
+    async def test_add_message(self, test_session):
         """Test adding messages to session."""
-        message = SessionMessage(role="user", content="Hello")
-        test_session.add_message(message)
+        await test_session.add_message("user", "Hello")
 
         assert len(test_session.messages) == 1
-        assert test_session.messages[0] == message
+        assert test_session.messages[0].role == "user"
+        assert test_session.messages[0].content == "Hello"
 
     def test_multiple_messages(self, test_session):
         """Test adding multiple messages."""
