@@ -14,6 +14,7 @@ import fnmatch
 import re
 
 from gambiarra.client.tools.base import FileOperationTool, ToolResult
+from gambiarra.client.security.path_validator import SecurityError
 
 
 class ReadFileTool(FileOperationTool):
@@ -29,37 +30,53 @@ class ReadFileTool(FileOperationTool):
 
     async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
         """Read file contents."""
-        self.validate_parameters(parameters, ["path"], ["line_range"])
+        self.validate_parameters(parameters, ["path"], ["start_line", "end_line"])
 
         path = parameters["path"]
-        line_range = parameters.get("line_range")
+        start_line = parameters.get("start_line")
+        end_line = parameters.get("end_line")
 
         try:
+            # Validate path through security manager (this calls PathValidator)
+            validated_path = self.validate_path(path)
+
             # Check if file exists
-            if not os.path.exists(path):
+            if not os.path.exists(validated_path):
                 return ToolResult.create_error(
                     "FILE_NOT_FOUND",
                     f"File '{path}' does not exist",
-                    {"attempted_path": path}
+                    {"attempted_path": path, "validated_path": validated_path}
                 )
 
-            # Read file content
-            async with aiofiles.open(path, 'r', encoding='utf-8') as file:
+            # Read file content using validated path
+            async with aiofiles.open(validated_path, 'r', encoding='utf-8') as file:
                 content = await file.read()
 
             lines = content.split('\n')
 
             # Apply line range if specified
-            if line_range:
-                start_line, end_line = line_range
-                if start_line < 1 or end_line < start_line or start_line > len(lines):
+            if start_line is not None or end_line is not None:
+                # Validate line parameters
+                if start_line is not None and start_line < 1:
                     return ToolResult.create_error(
                         "INVALID_LINE_RANGE",
-                        f"Invalid line range: {line_range}",
+                        f"start_line must be >= 1, got {start_line}",
                         {"total_lines": len(lines)}
                     )
 
-                # Convert to 0-based indexing
+                if start_line is None:
+                    start_line = 1
+                if end_line is None:
+                    end_line = len(lines)
+
+                if end_line < start_line or start_line > len(lines):
+                    return ToolResult.create_error(
+                        "INVALID_LINE_RANGE",
+                        f"Invalid line range: {start_line}-{end_line}",
+                        {"total_lines": len(lines), "start_line": start_line, "end_line": end_line}
+                    )
+
+                # Convert to 0-based indexing for slicing
                 result_content = '\n'.join(lines[start_line-1:end_line])
                 read_lines = f"{start_line}-{end_line}"
             else:
@@ -67,8 +84,7 @@ class ReadFileTool(FileOperationTool):
                 read_lines = "all"
 
             # Track file read in context tracker
-            if hasattr(self.security_manager, 'track_file_read'):
-                self.security_manager.track_file_read(path, result_content)
+            self.security_manager.track_file_read(validated_path, result_content)
 
             return ToolResult.success(
                 data=result_content,
@@ -80,6 +96,12 @@ class ReadFileTool(FileOperationTool):
                 }
             )
 
+        except SecurityError as e:
+            return ToolResult.create_error(
+                "SECURITY_ERROR",
+                str(e),
+                {"path": path, "security_details": e.details}
+            )
         except UnicodeDecodeError:
             return ToolResult.create_error(
                 "ENCODING_ERROR",
