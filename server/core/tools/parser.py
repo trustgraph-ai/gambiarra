@@ -81,7 +81,7 @@ class ToolCallParser:
 
             line_count_match = re.search(r'<line_count>(\d+)</line_count>', xml_content)
             if line_count_match:
-                params["line_count"] = line_count_match.group(1)
+                params["line_count"] = int(line_count_match.group(1))
 
         elif tool_type == "search_files":
             regex_match = re.search(r'<regex>(.*?)</regex>', xml_content)
