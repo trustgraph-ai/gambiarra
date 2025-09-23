@@ -23,6 +23,9 @@ from client.tools.command_ops import ExecuteCommandTool, GitOperationTool
 from client.security.path_validator import PathValidator, SecurityError
 from client.security.command_filter import CommandFilter
 from client.security.approval_manager import ApprovalManager, ToolApprovalRequest, ApprovalResponse, ApprovalDecision
+from client.security.smart_approval_manager import SmartApprovalManager, SmartApprovalConfig
+from client.security.tool_repetition_detector import ToolRepetitionDetector
+from client.security.tool_validator import ToolValidator, ValidationError
 from client.config import ClientConfig
 
 # Configure logging
@@ -45,10 +48,20 @@ class GambiarraClient:
         # Security components
         self.path_validator = PathValidator(config.workspace_root)
         self.command_filter = CommandFilter()
+        self.tool_repetition_detector = ToolRepetitionDetector(limit=3)
+        self.tool_validator = ToolValidator()
 
         # Tool management
         self.tool_manager = ToolManager(self._create_security_manager())
-        self.approval_manager = ApprovalManager(self._request_user_approval)
+
+        # Smart approval system
+        smart_config = SmartApprovalConfig(
+            auto_approve_low_risk=True,
+            auto_approve_read_operations=True,
+            auto_approve_list_operations=True,
+            mistake_limit_for_intervention=3
+        )
+        self.approval_manager = SmartApprovalManager(self._request_user_approval, smart_config)
 
         # Initialize tools
         self._initialize_tools()
@@ -297,6 +310,10 @@ class GambiarraClient:
     async def _handle_session_created(self, message: Dict[str, Any]) -> None:
         """Handle session creation confirmation."""
         self.session_id = message.get("session_id")
+
+        # Reset tool repetition detector for new session
+        self.tool_repetition_detector.reset()
+
         logger.info(f"🎯 Session created: {self.session_id}")
         print(f"🎯 Session created: {self.session_id}")
 
@@ -304,6 +321,43 @@ class GambiarraClient:
         """Handle tool approval request from server."""
         request_data = message["tool"]
         request_id = message["request_id"]
+
+        tool_name = request_data["name"]
+        parameters = request_data["parameters"]
+
+        # 1. Validate tool parameters FIRST
+        try:
+            self.tool_validator.validate_tool_parameters(tool_name, parameters)
+        except ValidationError as e:
+            # Parameter validation failed - auto-deny
+            logger.warning(f"🚫 Tool parameter validation failed: {e}")
+            self.tool_validator.record_tool_error(tool_name, "validation_error", str(e), parameters)
+            await self._send_message({
+                "type": "tool_approval_response",
+                "session_id": self.session_id,
+                "request_id": request_id,
+                "decision": "denied",
+                "feedback": f"Parameter validation failed: {e}",
+                "modified_parameters": {}
+            })
+            return
+
+        # 2. Check for tool repetition
+        repetition_result = self.tool_repetition_detector.check(tool_name, parameters)
+
+        if not repetition_result.allow_execution:
+            # Tool repetition detected - auto-deny
+            logger.warning(f"🚫 Tool repetition detected: {repetition_result.ask_user['message_detail']}")
+            self.tool_validator.record_tool_error(tool_name, "repetition_error", repetition_result.ask_user["message_detail"], parameters)
+            await self._send_message({
+                "type": "tool_approval_response",
+                "session_id": self.session_id,
+                "request_id": request_id,
+                "decision": "denied",
+                "feedback": repetition_result.ask_user["message_detail"],
+                "modified_parameters": {}
+            })
+            return
 
         request = ToolApprovalRequest(
             request_id=request_id,
@@ -316,8 +370,8 @@ class GambiarraClient:
             timestamp=time.time()
         )
 
-        # Process approval
-        response = await self.approval_manager.request_approval(request)
+        # 3. Process approval with smart system (pass validator for mistake tracking)
+        response = await self.approval_manager.request_approval(request, self.tool_validator)
 
         # Send response to server
         await self._send_message({
@@ -341,6 +395,13 @@ class GambiarraClient:
 
         # Execute tool
         result = await self.tool_manager.execute_tool(tool_name, parameters)
+
+        # Record success or failure in validator
+        if result.status == "success":
+            self.tool_validator.record_tool_success(tool_name)
+        else:
+            error_message = result.error.get("message", "Unknown error") if result.error else "Tool execution failed"
+            self.tool_validator.record_tool_error(tool_name, "execution_error", error_message, parameters)
 
         # Send result back to server
         try:
