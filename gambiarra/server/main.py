@@ -566,7 +566,7 @@ async def process_ai_response(session_id: str, session):
 
 async def generate_system_prompt(session) -> str:
     """Generate KiloCode-compatible system prompt using modular approach."""
-    from server.prompts.system import generate_system_prompt
+    from gambiarra.server.prompts.system import generate_system_prompt
 
     # Get current working directory from session or default
     cwd = getattr(session, 'cwd', '/workspace')
@@ -611,6 +611,23 @@ def parse_tool_calls(content: str) -> list:
 
 # XML parser function removed - now using modular ToolCallParser
 
+def wrap_tool_parameters_for_client(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrap tool parameters in the format expected by the client."""
+    # Tools that need nested args.file.path structure
+    if tool_name == "read_file":
+        return {
+            "args": {
+                "file": {
+                    "path": params.get("path", "")
+                }
+            }
+        }
+
+    # Tools that use flat structure
+    # The client validator expects these tools to have their parameters at the root level
+    return params
+
+
 async def request_tool_approval(session_id: str, tool_call: dict, websocket: WebSocket):
     """Request user approval for tool execution."""
     request_id = str(uuid.uuid4())
@@ -629,10 +646,13 @@ async def request_tool_approval(session_id: str, tool_call: dict, websocket: Web
         logger.warning(f"Unknown operating mode '{operating_mode_str}', defaulting to CODE")
         operating_mode = OperatingMode.CODE
 
+    # Wrap parameters for client format
+    wrapped_params = wrap_tool_parameters_for_client(tool_call["name"], tool_call["parameters"])
+
     # Apply mode-based filtering
     filter_result = tool_mode_filter.filter_tool_call(
         tool_call["name"],
-        tool_call["parameters"],
+        wrapped_params,
         operating_mode
     )
 
@@ -662,7 +682,7 @@ async def request_tool_approval(session_id: str, tool_call: dict, websocket: Web
         "request_id": request_id,
         "tool": {
             "name": tool_call["name"],
-            "parameters": tool_call["parameters"],
+            "parameters": wrapped_params,  # Use wrapped parameters for client
             "description": f"Execute {tool_call['name']} tool (mode: {operating_mode_str})",
             "risk_level": final_risk,
             "requires_approval": True
@@ -770,13 +790,16 @@ async def handle_tool_approval(session_id: str, message: Dict[str, Any]) -> Dict
 
         execution_id = str(uuid.uuid4())
 
+        # Wrap parameters for client format
+        wrapped_params = wrap_tool_parameters_for_client(tool_call["name"], tool_call["parameters"])
+
         return {
             "type": "execute_tool",
             "session_id": session_id,
             "execution_id": execution_id,
             "tool": {
                 "name": tool_call["name"],
-                "parameters": tool_call["parameters"]
+                "parameters": wrapped_params
             }
         }
     else:
@@ -851,7 +874,7 @@ Environment variables:
     parser.add_argument(
         "--host",
         default=config.host,
-        help=f"Host to bind server to (default: {config.host})"
+        help=f"Host to bind server to (default: {config.host}, use 0.0.0.0 for all interfaces)"
     )
     parser.add_argument(
         "--port",
@@ -880,7 +903,8 @@ Environment variables:
     args = parser.parse_args()
 
     # Update config with command line arguments
-    config.host = args.host
+    # Convert 'localhost' to '127.0.0.1' to avoid IPv6 binding issues
+    config.host = '127.0.0.1' if args.host == 'localhost' else args.host
     config.port = args.port
     config.ai_provider = args.provider
     config.log_level = args.log_level

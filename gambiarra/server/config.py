@@ -11,7 +11,7 @@ from dataclasses import dataclass
 class ServerConfig:
     """Server configuration settings."""
 
-    host: str = "localhost"
+    host: str = "127.0.0.1"  # Use explicit IPv4 to avoid IPv6 binding issues
     port: int = 8000
 
     # AI Provider settings
@@ -45,7 +45,9 @@ class ServerConfig:
         """Load from environment variables."""
 
         # Load from environment
-        self.host = os.getenv("GAMBIARRA_HOST", self.host)
+        # Convert 'localhost' to '127.0.0.1' to avoid IPv6 binding issues
+        env_host = os.getenv("GAMBIARRA_HOST", self.host)
+        self.host = '127.0.0.1' if env_host == 'localhost' else env_host
         self.port = int(os.getenv("GAMBIARRA_PORT", self.port))
 
         self.ai_provider = os.getenv("GAMBIARRA_AI_PROVIDER", self.ai_provider)
