@@ -158,7 +158,7 @@ class TestPathValidator:
         ]
 
         for attack in unicode_attacks:
-            with pytest.raises(ValueError):
+            with pytest.raises((ValueError, SecurityError)):
                 validator.validate_path(attack)
 
     def test_workspace_boundary_enforcement(self, temp_workspace):
@@ -173,7 +173,7 @@ class TestPathValidator:
         assert validator.validate_path("boundary.txt") is not None
 
         # Invalid: would escape workspace
-        with pytest.raises(ValueError):
+        with pytest.raises((ValueError, SecurityError)):
             validator.validate_path("../boundary.txt")
 
     def test_empty_and_special_input_handling(self, temp_workspace):

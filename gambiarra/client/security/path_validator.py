@@ -63,12 +63,23 @@ class PathValidator:
 
         import urllib.parse
 
-        # URL decode the path to catch encoded traversal attempts
-        decoded_path = urllib.parse.unquote(input_path)
+        # Recursively decode to catch double/triple encoding
+        paths_to_check = [input_path]
+        current_path = input_path
 
-        # Check both original and decoded paths for suspicious patterns
-        paths_to_check = [input_path, decoded_path]
+        # Decode up to 3 times to catch double/triple URL encoding
+        for _ in range(3):
+            try:
+                decoded = urllib.parse.unquote(current_path)
+                if decoded != current_path:
+                    paths_to_check.append(decoded)
+                    current_path = decoded
+                else:
+                    break
+            except Exception:
+                break
 
+        # Check all decoded versions for suspicious patterns
         for path_to_check in paths_to_check:
             # Check for clear traversal attempts: .. followed by a separator
             if "../" in path_to_check or "..\\" in path_to_check:
@@ -76,7 +87,7 @@ class PathValidator:
                     f"Path traversal detected: suspicious pattern in path '{input_path}'",
                     {
                         "input_path": input_path,
-                        "decoded_path": decoded_path,
+                        "decoded_versions": paths_to_check,
                         "reason": "Contains directory traversal sequence"
                     }
                 )
@@ -87,10 +98,31 @@ class PathValidator:
                     f"Path traversal detected: suspicious backslash pattern in path '{input_path}'",
                     {
                         "input_path": input_path,
-                        "decoded_path": decoded_path,
+                        "decoded_versions": paths_to_check,
                         "reason": "Contains Windows-style path separators"
                     }
                 )
+
+            # Check for encoded traversal patterns that might bypass simple checks
+            suspicious_encoded_patterns = [
+                "%2e%2e",  # encoded ".."
+                "%252e%252e",  # double encoded ".."
+                "%c0%af",  # UTF-8 overlong encoded "/"
+                "%c0%5c",  # UTF-8 overlong encoded "\"
+            ]
+
+            path_lower = path_to_check.lower()
+            for pattern in suspicious_encoded_patterns:
+                if pattern in path_lower:
+                    raise SecurityError(
+                        f"Path traversal detected: encoded suspicious pattern in path '{input_path}'",
+                        {
+                            "input_path": input_path,
+                            "decoded_versions": paths_to_check,
+                            "detected_pattern": pattern,
+                            "reason": "Contains encoded traversal patterns"
+                        }
+                    )
 
     def validate_path(self, input_path: str) -> str:
         """Validate and resolve path within workspace."""
