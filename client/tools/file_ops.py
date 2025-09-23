@@ -137,16 +137,34 @@ class WriteToFileTool(FileOperationTool):
                 await file.write(content)
 
             # Verify line count if provided
-            actual_line_count = len(content.split('\n'))
-            if expected_line_count and actual_line_count != expected_line_count:
-                return ToolResult.create_error(
-                    "LINE_COUNT_MISMATCH",
-                    f"Expected {expected_line_count} lines, got {actual_line_count}",
-                    {
-                        "expected": expected_line_count,
-                        "actual": actual_line_count
-                    }
-                )
+            if expected_line_count:
+                # Convert to int if it's a string
+                try:
+                    expected_line_count = int(expected_line_count)
+                except (ValueError, TypeError):
+                    expected_line_count = None
+
+            if expected_line_count:
+                # Count lines more accurately - handle empty content and trailing newlines
+                if not content:
+                    actual_line_count = 0
+                else:
+                    # Split by newlines, but don't count empty string at end if content ends with newline
+                    lines = content.split('\n')
+                    # If content ends with newline, split creates empty string at end - remove it
+                    if content.endswith('\n') and lines and lines[-1] == '':
+                        lines = lines[:-1]
+                    actual_line_count = len(lines)
+
+                if actual_line_count != expected_line_count:
+                    return ToolResult.create_error(
+                        "LINE_COUNT_MISMATCH",
+                        f"Expected {expected_line_count} lines, got {actual_line_count}",
+                        {
+                            "expected": expected_line_count,
+                            "actual": actual_line_count
+                        }
+                    )
 
             # Track file write in context tracker
             if hasattr(self.security_manager, 'track_file_write'):
