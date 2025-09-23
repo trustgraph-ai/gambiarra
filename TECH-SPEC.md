@@ -1,8 +1,8 @@
-# Gambiarra Technical Specification & Refactoring Strategy
+# Gambiarra Technical Specification
 
 ## Executive Summary
 
-Gambiarra has become a "sprawling mess" with fundamental architectural problems. This document proposes a comprehensive refactoring strategy based on KiloCode's proven architecture to address critical issues including format inconsistencies, monolithic design, and missing features.
+Gambiarra has become a "sprawling mess" with fundamental architectural problems. This document proposes a comprehensive refactoring strategy inspired by KiloCode's proven architecture to address critical issues including format inconsistencies, monolithic design, and missing features.
 
 ## Current Problems
 
@@ -26,16 +26,7 @@ Gambiarra has become a "sprawling mess" with fundamental architectural problems.
 - **Lack of Separation**: No clear boundaries between concerns
 - **Maintainability**: Single file responsible for too many responsibilities
 
-### 3. Missing KiloCode Features
-Based on analysis of ../src/core, Gambiarra lacks:
-- **Task Management**: No task-centric workflow system
-- **Provider Abstraction**: Limited AI provider flexibility
-- **Event System**: No event-driven architecture
-- **Plugin System**: Hardcoded tool implementations
-- **State Management**: Basic session tracking vs. rich context management
-- **Error Recovery**: Basic error handling vs. comprehensive recovery strategies
-
-## Target Architecture (Based on KiloCode)
+## Target Architecture
 
 ### Layered Architecture
 ```
@@ -154,7 +145,7 @@ class EventBus:
 - ✅ Context management prevents stale data issues
 
 ### Phase 3: Advanced Features (Week 5-6)
-**Goal**: Implement missing KiloCode features
+**Goal**: Implement missing features
 
 1. **Plugin System**
    - Dynamic tool loading
@@ -176,36 +167,6 @@ class EventBus:
 - ✅ System gracefully handles failures
 - ✅ Performance matches or exceeds current implementation
 
-## Immediate Actions Required
-
-### 1. Fix XML Parser (Priority: Critical)
-**File**: server/main.py:503-578
-**Problem**: Parser only handles flat XML structure
-**Solution**: Implement nested XML parsing to match server/prompts/tools.py specification
-
-### 2. Add Format Validation (Priority: High)
-**Location**: server/core/tools/validator.py
-**Purpose**: Prevent future client/server format drift
-**Implementation**: Schema validation against master specification
-
-### 3. Extract WebSocket Handler (Priority: Medium)
-**Current**: server/main.py (monolithic)
-**Target**: server/api/websocket.py
-**Benefit**: Separation of concerns, easier testing
-
-## Risk Assessment
-
-### High Risk
-- **Format inconsistency**: Immediate tool execution failures
-- **Monolithic architecture**: Difficult to maintain and extend
-
-### Medium Risk
-- **Missing features**: Competitive disadvantage vs. KiloCode
-- **Error handling**: Poor user experience during failures
-
-### Low Risk
-- **Performance**: Current implementation adequate for MVP
-
 ## Success Metrics
 
 1. **Functional**
@@ -223,22 +184,3 @@ class EventBus:
    - ✅ Better logging and monitoring
    - ✅ Easier deployment and maintenance
 
-## Decision: Proceed with Refactoring
-
-**Recommendation**: Execute three-phase refactoring strategy starting with Phase 1.
-
-**Rationale**:
-- Current architecture is unsustainable
-- Format inconsistencies are causing immediate failures
-- KiloCode's architecture provides proven patterns
-- Incremental approach minimizes risk
-
-**Next Steps**:
-1. Begin Phase 1 with XML parser fix
-2. Extract tool management components
-3. Implement format validation
-4. Proceed systematically through remaining phases
-
----
-
-*This specification addresses the "COMPLETE pigs-ear" state of the current codebase and provides a clear path forward based on KiloCode's successful architecture.*
