@@ -1,6 +1,6 @@
 """
 Tool registry for dynamic tool management.
-Based on KiloCode's plugin architecture patterns.
+Provides comprehensive tool registry and validation.
 """
 
 from typing import Dict, List, Any, Optional
@@ -39,7 +39,7 @@ class ToolRegistry:
         self._initialize_default_tools()
 
     def _initialize_default_tools(self) -> None:
-        """Initialize registry with default KiloCode-compatible tools."""
+        """Initialize registry with default tool set."""
 
         # File operations
         self.register_tool(ToolDefinition(

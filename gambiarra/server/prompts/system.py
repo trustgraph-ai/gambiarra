@@ -1,5 +1,5 @@
 """
-System prompt generator for Gambiarra - modular approach based on KiloCode.
+System prompt generator for Gambiarra with modular component system.
 """
 
 from .sections import (
@@ -27,7 +27,7 @@ def generate_system_prompt(cwd: str = "/workspace", mode: str = "code") -> str:
 
     # Role definition based on mode
     if mode == "code":
-        role_definition = "You are Gambiarra, an AI coding assistant built on the KiloCode architecture. You have access to powerful tools for file operations, code analysis, and system commands."
+        role_definition = "You are Gambiarra, an AI coding assistant with a secure client-server architecture. You have access to powerful tools for file operations, code analysis, and system commands."
     else:
         role_definition = "You are Gambiarra, an AI assistant with access to various tools for helping users with their tasks."
 
@@ -56,7 +56,7 @@ def generate_system_prompt(cwd: str = "/workspace", mode: str = "code") -> str:
 def get_role_definition(mode: str = "code") -> str:
     """Get role definition for specific mode."""
     if mode == "code":
-        return "You are Gambiarra, an AI coding assistant built on the KiloCode architecture. You have access to powerful tools for file operations, code analysis, and system commands."
+        return "You are Gambiarra, an AI coding assistant with a secure client-server architecture. You have access to powerful tools for file operations, code analysis, and system commands."
     elif mode == "ask":
         return "You are Gambiarra, an AI assistant focused on answering questions and providing guidance."
     elif mode == "architect":

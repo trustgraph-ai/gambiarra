@@ -1,6 +1,6 @@
 """
 Base plugin interface and framework.
-Enables dynamic tool loading and extensibility based on KiloCode patterns.
+Enables dynamic tool loading and extensibility for plugin architecture.
 """
 
 import logging

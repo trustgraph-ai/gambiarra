@@ -1,6 +1,6 @@
 """
 Tool parameter validation and error tracking for Gambiarra client.
-Based on KiloCode's validation patterns.
+Provides comprehensive parameter validation and error tracking.
 """
 
 import logging

@@ -1,7 +1,7 @@
 """
 Tool Repetition Detector for Gambiarra client.
 Prevents AI from getting stuck in infinite loops by detecting identical consecutive tool calls.
-Based on KiloCode's ToolRepetitionDetector.
+Detects and prevents AI tool call repetition loops.
 """
 
 import json

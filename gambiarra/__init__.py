@@ -1,7 +1,7 @@
 """
 Gambiarra - AI-powered coding assistant with client-server architecture.
 
-A Python-based headless AI coding assistant inspired by KiloCode,
+A Python-based headless AI coding assistant with secure architecture,
 featuring secure client-side file operations and server-side AI orchestration.
 """
 

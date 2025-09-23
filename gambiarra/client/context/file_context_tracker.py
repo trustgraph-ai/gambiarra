@@ -1,7 +1,7 @@
 """
 File context tracker for Gambiarra client.
 Tracks file modifications and provides freshness information to prevent stale context issues.
-Based on KiloCode's context tracking patterns.
+Provides intelligent file context tracking and analysis.
 """
 
 import os

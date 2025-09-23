@@ -1,6 +1,6 @@
 """
 Task state management.
-Defines task states and transitions based on KiloCode patterns.
+Defines task states and transitions for workflow management.
 """
 
 from enum import Enum

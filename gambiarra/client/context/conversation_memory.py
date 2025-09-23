@@ -1,6 +1,6 @@
 """
 Conversation memory management for Gambiarra client.
-Handles message history, context windows, and token counting based on KiloCode patterns.
+Handles message history, context windows, and token counting for AI conversations.
 """
 
 import logging
@@ -34,7 +34,7 @@ class ConversationMessage:
 class ConversationMemory:
     """
     Manages conversation memory with token-aware context window management.
-    Based on KiloCode's conversation handling patterns.
+    Provides intelligent conversation memory management.
     """
 
     def __init__(self, max_tokens: int = 32000, context_window_ratio: float = 0.8):

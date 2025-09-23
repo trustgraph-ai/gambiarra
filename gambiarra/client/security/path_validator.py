@@ -21,8 +21,8 @@ class PathValidator:
         self._load_ignore_patterns()
 
     def _load_ignore_patterns(self) -> None:
-        """Load .kilocodeignore patterns."""
-        ignore_file = self.workspace_root / ".kilocodeignore"
+        """Load .gambiarraignore patterns."""
+        ignore_file = self.workspace_root / ".gambiarraignore"
 
         if ignore_file.exists():
             try:
@@ -32,9 +32,9 @@ class PathValidator:
                         if line.strip() and not line.startswith('#')
                     ]
                 self.ignore_patterns.extend(patterns)
-                logger.info(f"📁 Loaded {len(patterns)} ignore patterns from .kilocodeignore")
+                logger.info(f"📁 Loaded {len(patterns)} ignore patterns from .gambiarraignore")
             except Exception as e:
-                logger.warning(f"❌ Failed to load .kilocodeignore: {e}")
+                logger.warning(f"❌ Failed to load .gambiarraignore: {e}")
 
         # Add default ignore patterns
         default_patterns = [
@@ -192,7 +192,7 @@ class PathValidator:
             "exists": self.workspace_root.exists(),
             "is_directory": self.workspace_root.is_dir(),
             "ignore_patterns_count": len(self.ignore_patterns),
-            "has_kilocodeignore": (self.workspace_root / ".kilocodeignore").exists()
+            "has_gambiarraignore": (self.workspace_root / ".gambiarraignore").exists()
         }
 
 

@@ -1,6 +1,6 @@
 """
 File operation tools for Gambiarra client.
-Implements secure file system access with KiloCode compatibility.
+Implements secure file system access with XML-based tool calling.
 """
 
 import asyncio

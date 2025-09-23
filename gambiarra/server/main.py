@@ -478,7 +478,7 @@ async def process_ai_response(session_id: str, session):
         # Get AI provider (server-configured)
         provider = ai_provider_manager.get_provider()
 
-        # Generate system prompt (KiloCode compatible)
+        # Generate system prompt with tool descriptions
         system_prompt = await generate_system_prompt(session)
 
         # Get conversation messages
@@ -565,7 +565,7 @@ async def process_ai_response(session_id: str, session):
             }))
 
 async def generate_system_prompt(session) -> str:
-    """Generate KiloCode-compatible system prompt using modular approach."""
+    """Generate system prompt with tool descriptions using modular approach."""
     from gambiarra.server.prompts.system import generate_system_prompt
 
     # Get current working directory from session or default
@@ -823,7 +823,7 @@ async def handle_tool_result(session_id: str, message: Dict[str, Any]) -> Dict[s
 
     logger.info(f"🛠️ Tool result received for execution {execution_id}: {result['status']}")
 
-    # Add tool result to session - KiloCode style: automatic agentic loop
+    # Add tool result to session for automatic agentic loop
     session = session_manager.get_session(session_id)
     if session:
         # Add a detailed tool result that AI can understand and act on
@@ -833,7 +833,7 @@ async def handle_tool_result(session_id: str, message: Dict[str, Any]) -> Dict[s
         logger.info(f"✅ Tool result added to conversation")
         logger.info(f"🔍 Current conversation has {len(session.messages)} messages")
 
-        # KiloCode pattern: Continue agentic loop until attempt_completion or no more tools
+        # Continue agentic loop until attempt_completion or no more tools
         # Safety limit to prevent infinite loops
         recent_tool_count = sum(1 for msg in session.messages[-10:] if msg.role == "assistant" and msg.content and "Tool result:" in (msg.content or ""))
 

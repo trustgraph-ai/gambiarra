@@ -1,6 +1,6 @@
 """
 Enhanced session context management.
-Provides rich conversation context tracking based on KiloCode patterns.
+Provides rich conversation context tracking and memory management.
 """
 
 import logging

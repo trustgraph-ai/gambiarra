@@ -1,6 +1,6 @@
 """
 Task Manager - orchestrates task execution and lifecycle.
-Based on KiloCode's task-centric architecture patterns.
+Task-centric architecture with workflow orchestration.
 """
 
 import asyncio

@@ -1,5 +1,5 @@
 """
-Base AI provider interface based on KiloCode patterns.
+Base AI provider interface with streaming and tool support.
 Provides unified interface for multiple LLM providers.
 """
 

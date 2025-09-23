@@ -1,6 +1,6 @@
 """
 Event bus system for component communication.
-Based on KiloCode's event-driven architecture patterns.
+Event-driven architecture with async message dispatch.
 """
 
 import asyncio

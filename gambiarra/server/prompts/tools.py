@@ -1,5 +1,5 @@
 """
-Tool descriptions for Gambiarra - based on KiloCode's detailed tool prompts.
+Tool descriptions for Gambiarra with comprehensive XML-based tool specifications.
 """
 
 from typing import List

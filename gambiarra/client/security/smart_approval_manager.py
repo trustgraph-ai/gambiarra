@@ -1,7 +1,7 @@
 """
 Smart approval manager for Gambiarra client.
 Integrates with tool validator for intelligent auto-approval based on mistake counting.
-Based on KiloCode's AutoApprovalHandler patterns.
+Provides intelligent auto-approval for trusted operations.
 """
 
 import logging

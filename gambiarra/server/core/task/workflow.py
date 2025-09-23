@@ -1,6 +1,6 @@
 """
 Workflow definitions and execution engine.
-Implements complex multi-step operations based on KiloCode patterns.
+Implements complex multi-step operations with state management.
 """
 
 import logging

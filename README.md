@@ -17,7 +17,7 @@
 🛡️ **Fault Tolerance**: Circuit breakers and graceful degradation
 📊 **Event-Driven**: Modern event-driven architecture with task management
 🎯 **Tool Management**: Comprehensive tool registry with versioning and validation
-🔧 **KiloCode Compatible**: Uses the same XML tool format and prompt system
+🔧 **XML Tool Format**: Comprehensive XML-based tool calling system
 
 ## Quick Start
 
@@ -118,7 +118,7 @@ All tools execute locally on the client for security:
 
 - **Multiple Providers**: OpenAI, Anthropic, Google (extensible)
 - **Streaming Responses**: Real-time AI output with tool parsing
-- **KiloCode Prompts**: Compatible with KiloCode's prompt system
+- **Modular Prompts**: Comprehensive prompt system with tool descriptions
 - **Tool Orchestration**: XML-based tool call parsing and execution
 
 ## Configuration
@@ -252,7 +252,7 @@ Approve? (y/n/m for modify): y
 ### Path Security
 
 - All file paths validated against workspace root
-- `.kilocodeignore` patterns respected
+- `.gambiarraignore` patterns respected
 - No access outside project directory
 - Symbolic link traversal protection
 
@@ -332,7 +332,7 @@ wscat -c ws://localhost:8000/ws
 
 - Verify workspace path is correct
 - Check file permissions
-- Review `.kilocodeignore` patterns
+- Review `.gambiarraignore` patterns
 - Enable debug logging: `--debug`
 
 ### AI Provider Issues
@@ -355,6 +355,7 @@ MIT License - see LICENSE file for details.
 
 ## Acknowledgments
 
-- Inspired by [KiloCode](https://github.com/Kilo-Org/kiloocode)
+- Inspired by [KiloCode](https://github.com/Kilo-Org/kiloocode), Roo-Code
+  and Cline.
 - Built with FastAPI, WebSockets, and asyncio
-- Brazilian ingenuity in software engineering 🇧🇷
+- Brazilian references are deliberate 🇧🇷

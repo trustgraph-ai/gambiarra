@@ -226,7 +226,7 @@ def detect_intent(messages: List[Message]) -> str:
         return "hello"
 
 def generate_tool_calls(tools: List[Dict[str, Any]]) -> str:
-    """Generate XML tool calls in KiloCode format."""
+    """Generate XML tool calls in standard message format."""
     if not tools:
         return ""
 

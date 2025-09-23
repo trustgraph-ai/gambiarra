@@ -1,6 +1,6 @@
 """
 Comprehensive error handling and recovery mechanisms for Gambiarra server.
-Based on KiloCode's error resilience patterns.
+Error recovery and resilience patterns for robust operation.
 """
 
 import asyncio

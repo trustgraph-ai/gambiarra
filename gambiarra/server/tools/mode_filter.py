@@ -1,7 +1,7 @@
 """
 Mode-based tool filtering for Gambiarra server.
 Provides different tool sets based on operating mode (e.g., code, ask, architect).
-Based on KiloCode's mode system patterns.
+Operating mode filtering for context-aware tool execution.
 """
 
 import logging

@@ -1,5 +1,5 @@
 """
-Prompt sections for Gambiarra - based on KiloCode's modular approach.
+Prompt sections for Gambiarra with modular component architecture.
 """
 
 from typing import List, Dict, Any, Optional

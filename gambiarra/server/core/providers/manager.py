@@ -1,6 +1,6 @@
 """
 AI Provider Manager - orchestrates multiple AI providers.
-Based on KiloCode's provider management patterns.
+Manages multiple AI providers with failover and load balancing.
 """
 
 import logging
