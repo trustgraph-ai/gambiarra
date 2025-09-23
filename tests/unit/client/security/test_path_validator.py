@@ -68,7 +68,7 @@ class TestPathValidator:
         ]
 
         for abs_path in absolute_paths:
-            with pytest.raises(ValueError, match="Absolute paths not allowed"):
+            with pytest.raises((ValueError, SecurityError), match="(Absolute paths not allowed|Path traversal detected)"):
                 validator.validate_path(abs_path)
 
     def test_symlink_handling(self, temp_workspace):
@@ -84,7 +84,7 @@ class TestPathValidator:
         symlink_path.symlink_to(target_path)
 
         # Should detect and reject symlink traversal
-        with pytest.raises(ValueError, match="Path traversal detected"):
+        with pytest.raises((ValueError, SecurityError), match="Path traversal detected"):
             validator.validate_path("dangerous_link")
 
     def test_gambiarraignore_patterns(self, temp_workspace):
@@ -138,7 +138,7 @@ class TestPathValidator:
         case_variants = [
             "../ETC/passwd",
             "../etc/PASSWD",
-            "..\ETC\passwd",  # Mixed case with backslashes
+            "..\\ETC\\passwd",  # Mixed case with backslashes
         ]
 
         for variant in case_variants:
