@@ -1,0 +1,176 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gambiarra"
+version = "1.0.0"
+description = "AI-powered coding assistant with client-server architecture"
+readme = "README.md"
+authors = [
+    {name = "Gambiarra Team", email = "team@gambiarra.dev"}
+]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Tools",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+keywords = ["ai", "coding-assistant", "development-tools", "automation"]
+requires-python = ">=3.9"
+dependencies = [
+    # Core web framework and async support
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "websockets>=12.0",
+    "aiohttp>=3.9.0",
+    "aiofiles>=23.2.0",
+    "aioconsole",
+
+    # AI and HTTP clients
+    "openai>=1.3.0",
+    "httpx>=0.25.0",
+    "trustgraph-base",
+
+    # Data validation and serialization
+    "pydantic>=2.5.0",
+
+    # Environment and configuration
+    "python-dotenv>=1.0.0",
+
+    # Development and testing
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.7.0",
+    "pre-commit>=3.5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/gambiarra-team/gambiarra"
+Documentation = "https://gambiarra.readthedocs.io/"
+Repository = "https://github.com/gambiarra-team/gambiarra.git"
+"Bug Tracker" = "https://github.com/gambiarra-team/gambiarra/issues"
+
+[project.scripts]
+gambiarra-client = "gambiarra.client.main:main_sync"
+gambiarra-server = "gambiarra.server.main:main"
+gambiarra-test-llm = "gambiarra.test_llm.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["gambiarra*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+"gambiarra.server" = ["prompts/*.txt", "prompts/*.py"]
+"gambiarra.client" = ["*.json", "*.yaml"]
+
+# Black code formatting
+[tool.black]
+line-length = 100
+target-version = ['py39']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+# isort import sorting
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 100
+known_first_party = ["gambiarra"]
+
+# mypy type checking
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "websockets.*",
+    "aiofiles.*",
+    "dotenv.*",
+]
+ignore_missing_imports = true
+
+# pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbose",
+    "-ra",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+asyncio_mode = "auto"
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["gambiarra"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__main__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
