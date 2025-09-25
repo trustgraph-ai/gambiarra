@@ -65,6 +65,8 @@ python -m gambiarra.client
 gambiarra-client --help
 ```
 
+Note, the client is really a test harness at the moment.
+
 **Start the test LLM (for development):**
 ```bash
 # Using entry point (recommended)
@@ -116,7 +118,7 @@ All tools execute locally on the client for security:
 
 ### 🧠 AI Integration
 
-- **Multiple Providers**: OpenAI, Anthropic, Google (extensible)
+- **Multiple Providers**: OpenAI, TrustGraph, ... (extensible)
 - **Streaming Responses**: Real-time AI output with tool parsing
 - **Modular Prompts**: Comprehensive prompt system with tool descriptions
 - **Tool Orchestration**: XML-based tool call parsing and execution
