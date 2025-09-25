@@ -8,11 +8,11 @@ Gambiarra is an AI-powered coding assistant with a secure client-server architec
 
 ### System Architecture
 ```
-┌─────────────────┐    WebSocket     ┌─────────────────┐    HTTP      ┌─────────────────┐
+┌─────────────────┐   WebSocket    ┌─────────────────┐    HTTP     ┌─────────────────┐
 │                 │ ◄────────────► │                 │ ◄─────────► │                 │
 │  Gambiarra      │                │  Gambiarra      │             │  AI Provider    │
-│  Client         │                │  Server         │             │  (OpenAI/Test)  │
-│                 │                │                 │             │                 │
+│  Client         │                │  Server         │             │  (TrustGraph,   │
+│                 │                │                 │             │   OpenAI)       │
 │ • File Ops      │                │ • AI Orchestr.  │             │ • LLM Responses │
 │ • Security      │                │ • Tool Parsing  │             │ • Tool Calls    │
 │ • Tool Exec     │                │ • Sessions      │             │ • Streaming     │
