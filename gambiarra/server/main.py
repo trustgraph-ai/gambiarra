@@ -477,12 +477,15 @@ async def process_ai_response(session_id: str, session):
     try:
         # Get AI provider (server-configured)
         provider = ai_provider_manager.get_provider()
+        logger.info(f"🤖 Using AI provider: {ai_provider_manager.default_provider}")
 
         # Generate system prompt with tool descriptions
         system_prompt = await generate_system_prompt(session)
+        logger.info(f"📝 Generated system prompt ({len(system_prompt)} chars)")
 
         # Get conversation messages
         messages = await session.get_messages()
+        logger.info(f"💬 Got {len(messages)} conversation messages")
 
         # Add system prompt
         full_messages = [{"role": "system", "content": system_prompt}] + messages
@@ -493,8 +496,13 @@ async def process_ai_response(session_id: str, session):
             raise ValueError("WebSocket connection lost")
 
         response_content = ""
+        logger.info(f"🔄 Starting to stream completion from {ai_provider_manager.default_provider}...")
 
+        chunk_count = 0
         async for chunk in provider.stream_completion(full_messages):
+            chunk_count += 1
+            logger.info(f"📦 Received chunk #{chunk_count} ({len(chunk)} chars)")
+
             # Send chunk to client
             await websocket.send_text(json.dumps({
                 "type": "ai_response_chunk",
@@ -506,6 +514,8 @@ async def process_ai_response(session_id: str, session):
             }))
 
             response_content += chunk
+
+        logger.info(f"✅ Streaming complete. Total chunks: {chunk_count}, total chars: {len(response_content)}")
 
         # Parse for tool calls
         tool_calls = parse_tool_calls(response_content)
@@ -956,6 +966,9 @@ Environment variables:
     config.port = args.port
     config.ai_provider = args.provider
     config.log_level = args.log_level
+
+    # Update AI provider manager's default provider
+    ai_provider_manager.default_provider = args.provider
 
     print("🚀 Starting Gambiarra Server...")
     print(f"📍 WebSocket endpoint: ws://{config.host}:{config.port}/ws")

@@ -256,9 +256,13 @@ class TrustGraphProvider(AIProvider):
 
     async def stream_completion(self, messages: List[Dict[str, str]]) -> AsyncIterator[str]:
         """Stream completion from TrustGraph."""
+        logger.info(f"🎯 TrustGraph stream_completion called with {len(messages)} messages")
+
         if not TRUSTGRAPH_AVAILABLE:
-            yield "Error: TrustGraph API not available. Please install trustgraph package."
-            return
+            logger.error("❌ TrustGraph API not available")
+            raise ImportError("TrustGraph API not available. Please install with: pip install trustgraph")
+
+        logger.info("✅ TrustGraph API is available")
 
         try:
             # Build conversation context for TrustGraph
@@ -283,11 +287,17 @@ class TrustGraphProvider(AIProvider):
             # Create TrustGraph API instance
             api = Api(url=self.base_url)
 
-            # Call text completion with full conversation context
-            response = api.flow().id(self.flow_id).text_completion(
-                system=system_msg,
-                prompt=full_prompt
+            # Call text completion in thread pool to avoid blocking event loop
+            logger.info(f"🔄 Calling TrustGraph API (flow: {self.flow_id})...")
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: api.flow().id(self.flow_id).text_completion(
+                    system=system_msg,
+                    prompt=full_prompt
+                )
             )
+            logger.info(f"✅ TrustGraph API returned {len(response)} chars")
 
             # Yield the complete response
             yield response

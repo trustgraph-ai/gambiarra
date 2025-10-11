@@ -41,17 +41,21 @@ logger = logging.getLogger(__name__)
 class GambiarraClient:
     """Main Gambiarra client for secure AI coding assistance."""
 
-    def __init__(self, config: ClientConfig):
+    def __init__(self, config: ClientConfig, dev_mode: bool = False):
         self.config = config
+        self.dev_mode = dev_mode
         self.websocket: Optional[websockets.WebSocketServerProtocol] = None
         self.session_id: Optional[str] = None
         self.running = False
 
         # Security components
         self.path_validator = PathValidator(config.workspace_root)
-        self.command_filter = CommandFilter()
+        self.command_filter = CommandFilter(dev_mode=dev_mode)
         self.tool_repetition_detector = ToolRepetitionDetector(limit=3)
         self.tool_validator = ToolValidator()
+
+        if dev_mode:
+            logger.warning("⚠️⚠️⚠️ DEV MODE ENABLED - ALL SECURITY RESTRICTIONS BYPASSED ⚠️⚠️⚠️")
 
         # Context tracking
         self.file_context_tracker = FileContextTracker(max_tracked_files=200)
@@ -738,6 +742,7 @@ async def main():
     parser.add_argument("--workspace", "-w", default=".", help="Workspace root directory")
     parser.add_argument("--server", "-s", default="ws://localhost:8000/ws", help="Server WebSocket URL")
     parser.add_argument("--debug", "-d", action="store_true", help="Enable debug logging")
+    parser.add_argument("--dev-mode", action="store_true", help="⚠️  Enable dev mode (bypasses ALL security restrictions)")
 
     args = parser.parse_args()
 
@@ -751,7 +756,13 @@ async def main():
     )
 
     # Create and run client
-    client = GambiarraClient(config)
+    if args.dev_mode:
+        print("\n⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️")
+        print("DEV MODE ENABLED - ALL SECURITY RESTRICTIONS BYPASSED")
+        print("Use this only for development purposes!")
+        print("⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️\n")
+
+    client = GambiarraClient(config, dev_mode=args.dev_mode)
 
     def signal_handler(signum, frame):
         logger.info("🛑 Shutdown signal received")
