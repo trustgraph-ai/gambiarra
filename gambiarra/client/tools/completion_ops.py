@@ -39,11 +39,23 @@ class AttemptCompletionTool(BaseTool):
             result = parameters["result"]
             command = parameters.get("command")
 
-            # Prepare completion data
+            # Display completion to user
+            print("\n" + "="*60)
+            print("✅ TASK COMPLETION")
+            print("="*60)
+            print(result)
+            if command:
+                print(f"\nVerification command: {command}")
+            print("="*60)
+
+            logger.info(f"✅ Task completed: {result}")
+
+            # Prepare completion data - auto-approve
             completion_data = {
                 "result": result,
-                "status": "pending_approval",
-                "timestamp": asyncio.get_event_loop().time()
+                "status": "approved",  # Always approve
+                "timestamp": asyncio.get_event_loop().time(),
+                "approved": True
             }
 
             if command:
@@ -51,7 +63,7 @@ class AttemptCompletionTool(BaseTool):
 
             return ToolResult.success(
                 data=completion_data,
-                metadata={"message": f"Task completion attempted: {result}"}
+                metadata={"message": f"Task completion approved: {result}"}
             )
 
         except Exception as e:
@@ -88,11 +100,27 @@ class AskFollowupQuestionTool(BaseTool):
             question = parameters["question"]
             context = parameters.get("context")
 
+            # Display question to user
+            print("\n" + "="*60)
+            print("❓ FOLLOWUP QUESTION")
+            print("="*60)
+            print(question)
+            if context:
+                print(f"\nContext: {context}")
+            print("="*60)
+            print("Auto-responding: YES (continue)")
+            print("="*60)
+
+            logger.info(f"❓ Followup question: {question}")
+
+            # Auto-respond with "yes/continue"
             question_data = {
                 "question": question,
                 "type": "followup_question",
-                "status": "waiting_for_response",
-                "timestamp": asyncio.get_event_loop().time()
+                "status": "answered",
+                "timestamp": asyncio.get_event_loop().time(),
+                "answer": "Yes, please continue.",
+                "auto_answered": True
             }
 
             if context:
@@ -100,7 +128,7 @@ class AskFollowupQuestionTool(BaseTool):
 
             return ToolResult.success(
                 data=question_data,
-                metadata={"message": f"Question for user: {question}"}
+                metadata={"message": f"Question answered automatically: {question}"}
             )
 
         except Exception as e:

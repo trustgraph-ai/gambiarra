@@ -20,6 +20,7 @@ from websockets.exceptions import ConnectionClosed, WebSocketException
 from gambiarra.client.tools.base import ToolManager
 from gambiarra.client.tools.file_ops import ReadFileTool, WriteToFileTool, SearchFilesTool, ListFilesTool, InsertContentTool, SearchAndReplaceTool
 from gambiarra.client.tools.command_ops import ExecuteCommandTool, GitOperationTool
+from gambiarra.client.tools.completion_ops import AttemptCompletionTool, AskFollowupQuestionTool
 from gambiarra.client.security.path_validator import PathValidator, SecurityError
 from gambiarra.client.security.command_filter import CommandFilter
 from gambiarra.client.security.approval_manager import ApprovalManager, ToolApprovalRequest, ApprovalResponse, ApprovalDecision
@@ -122,6 +123,10 @@ class GambiarraClient:
             stream_callback=self._handle_command_stream
         ))
         self.tool_manager.register_tool(GitOperationTool(self._create_security_manager()))
+
+        # Completion and communication tools
+        self.tool_manager.register_tool(AttemptCompletionTool(self._create_security_manager()))
+        self.tool_manager.register_tool(AskFollowupQuestionTool(self._create_security_manager()))
 
         logger.info(f"🔧 Initialized {len(self.tool_manager.list_tools())} tools")
 
