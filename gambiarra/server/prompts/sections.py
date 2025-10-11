@@ -64,7 +64,37 @@ RULES
 - The insert_content tool adds lines of text to files at a specific line number, such as adding a new function to a JavaScript file or inserting a new route in a Python file. Use line number 0 to append at the end of the file, or any positive number to insert before that line.
 - The search_and_replace tool finds and replaces text or regex in files. This tool allows you to search for a specific regex pattern or text and replace it with another value. Be cautious when using this tool to ensure you are replacing the correct text. It can support multiple operations at once.
 - You should always prefer using other editing tools over write_to_file when making changes to existing files since write_to_file is much slower and cannot handle large files.
-- When using the write_to_file tool to modify a file, use the tool directly with the desired content. You do not need to display the content before using the tool. ALWAYS provide the COMPLETE file content in your response. This is NON-NEGOTIABLE. Partial updates or placeholders like '// rest of code unchanged' are STRICTLY FORBIDDEN. You MUST include ALL parts of the file, even if they haven't been modified. Failure to do so will result in incomplete or broken code, severely impacting the user's project."""
+- When using the write_to_file tool to modify a file, use the tool directly with the desired content. You do not need to display the content before using the tool. ALWAYS provide the COMPLETE file content in your response. This is NON-NEGOTIABLE. Partial updates or placeholders like '// rest of code unchanged' are STRICTLY FORBIDDEN. You MUST include ALL parts of the file, even if they haven't been modified. Failure to do so will result in incomplete or broken code, severely impacting the user's project.
+
+COMMAND EXECUTION RULES
+
+- When using the execute_command tool, you MUST ensure all commands are NON-INTERACTIVE. Commands that wait for user input will hang and timeout.
+- Before executing any command, verify it includes appropriate flags to skip prompts:
+  * npm/npx: Use `--yes` or `-y` flags (e.g., `npm install --yes package`)
+  * apt-get: Use `-y` flag (e.g., `apt-get install -y package`)
+  * pip: Use `--yes` flag for confirmations
+  * Interactive installers: Use `--non-interactive` or similar flags
+- For commands that create projects, you MUST provide the project name and all parameters:
+  * Vite: `npm create vite@latest my-app -- --template react-ts` (CORRECT)
+  * Vite: `npx create-vite . --template react-ts` (WRONG - WILL HANG)
+  * Vite: `npx --yes create-vite . --template react-ts` (WRONG - WILL HANG)
+  * React: `npx create-react-app my-app --template typescript`
+  * Next.js: `npx create-next-app@latest my-app --typescript --tailwind --app`
+  * CRITICAL: NEVER use `.` as the project name with create-vite - it WILL prompt interactively and HANG
+  * The `npx --yes` flag only skips npx package installation confirmation, NOT the tool's own interactive prompts
+  * Even with `--yes`, create-vite will still prompt for project name if you use `.`
+  * If the user requests creating an app "in the current directory" or similar, create it in a subdirectory with a sensible name like "my-app", "app", or based on the project type (e.g., "vite-app", "react-app")
+  * After creating the project in a subdirectory, you can inform the user and offer to move files if they want them in the current directory
+- Common non-interactive patterns:
+  * `npm install --yes` or `npm install -y` for package installation
+  * `git clone <url>` is already non-interactive
+  * `npm run build` is typically non-interactive
+  * `npm test` may need `-- --watchAll=false` to avoid watch mode
+- If a command typically requires interactive input, either:
+  1. Find the non-interactive flag version
+  2. Provide all inputs as command-line arguments
+  3. Use environment variables (CI=true is automatically set)
+- When in doubt, research the command's non-interactive options before executing."""
 
 
 def get_system_info_section(cwd: str) -> str:
