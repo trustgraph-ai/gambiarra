@@ -14,17 +14,17 @@ logger = logging.getLogger(__name__)
 class CommandFilter:
     """Filters and validates shell commands for security."""
 
-    def __init__(self, dev_mode: bool = False):
-        self.dev_mode = dev_mode
+    def __init__(self, permissive_mode: bool = False):
+        self.permissive_mode = permissive_mode
         self.blocked_commands: List[re.Pattern] = []
         self.allowed_commands: List[re.Pattern] = []
         self.blocked_patterns: List[re.Pattern] = []
         self.dangerous_chars: Set[str] = set()
 
-        if not dev_mode:
+        if not permissive_mode:
             self._initialize_security_rules()
         else:
-            logger.warning("⚠️  DEV MODE ENABLED - ALL COMMAND RESTRICTIONS BYPASSED")
+            logger.warning("⚠️  PERMISSIVE MODE ENABLED - ALL COMMAND RESTRICTIONS BYPASSED")
 
     def _initialize_security_rules(self) -> None:
         """Initialize command security rules."""
@@ -148,9 +148,9 @@ class CommandFilter:
 
     def is_command_allowed(self, command: str) -> bool:
         """Check if command is allowed to execute."""
-        # Dev mode bypasses all restrictions
-        if self.dev_mode:
-            logger.debug(f"✅ Command allowed (dev mode): {command[:50]}...")
+        # Permissive mode bypasses all restrictions
+        if self.permissive_mode:
+            logger.debug(f"✅ Command allowed (permissive mode): {command[:50]}...")
             return True
 
         try:
