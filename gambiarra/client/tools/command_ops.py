@@ -177,12 +177,15 @@ class ExecuteCommandTool(CommandExecutionTool):
             "HOME": os.environ.get("HOME", ""),
             "USER": os.environ.get("USER", ""),
             "SHELL": os.environ.get("SHELL", "/bin/sh"),
-            "TERM": os.environ.get("TERM", "xterm"),
+            "TERM": os.environ.get("TERM", "xterm-256color"),  # Some tools check for dumb terminal
             "LANG": os.environ.get("LANG", "en_US.UTF-8"),
             # CI mode tells many tools to skip interactive prompts
             "CI": "true",
+            "CONTINUOUS_INTEGRATION": "true",
             "DEBIAN_FRONTEND": "noninteractive",  # For apt-get and similar
             "NPM_CONFIG_YES": "true",  # For npm to skip prompts
+            "SKIP_PROMPTS": "true",  # Generic skip prompts flag
+            "NO_UPDATE_NOTIFIER": "true",  # Disable update notifications
         }
 
         # Add development tools if available

@@ -74,17 +74,17 @@ COMMAND EXECUTION RULES
   * apt-get: Use `-y` flag (e.g., `apt-get install -y package`)
   * pip: Use `--yes` flag for confirmations
   * Interactive installers: Use `--non-interactive` or similar flags
-- For commands that create projects, you MUST provide the project name and all parameters:
-  * Vite: `npm create vite@latest my-app -- --template react-ts` (CORRECT)
-  * Vite: `npx create-vite . --template react-ts` (WRONG - WILL HANG)
-  * Vite: `npx --yes create-vite . --template react-ts` (WRONG - WILL HANG)
+- For commands that create projects, you MUST provide the project name and all parameters. Use the OLDER stable versions to avoid new interactive prompts:
+  * Vite with React+TS: Use degit to clone template directly (most reliable, no prompts):
+    - `npx degit vitejs/vite/packages/create-vite/template-react-ts my-app`
+    - Then: `cd my-app && npm install`
+  * Vite alternative: `npm create vite@4.4.0 my-app -- --template react-ts` (older version, fewer prompts)
   * React: `npx create-react-app my-app --template typescript`
-  * Next.js: `npx create-next-app@latest my-app --typescript --tailwind --app`
-  * CRITICAL: NEVER use `.` as the project name with create-vite - it WILL prompt interactively and HANG
-  * The `npx --yes` flag only skips npx package installation confirmation, NOT the tool's own interactive prompts
-  * Even with `--yes`, create-vite will still prompt for project name if you use `.`
-  * If the user requests creating an app "in the current directory" or similar, create it in a subdirectory with a sensible name like "my-app", "app", or based on the project type (e.g., "vite-app", "react-app")
-  * After creating the project in a subdirectory, you can inform the user and offer to move files if they want them in the current directory
+  * Next.js: `npx create-next-app@latest my-app --typescript --yes`
+  * CRITICAL: NEVER use `.` as the project name - it WILL prompt interactively and HANG
+  * Modern `npm create vite@latest` may still have prompts even with flags - use degit method for Vite
+  * If the user requests creating an app "in the current directory", create it in a subdirectory with a sensible name like "my-app", "react-app", etc.
+  * After creating the project, you can inform the user about the location
 - Common non-interactive patterns:
   * `npm install --yes` or `npm install -y` for package installation
   * `git clone <url>` is already non-interactive
