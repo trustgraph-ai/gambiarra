@@ -37,9 +37,10 @@ class SmartApprovalManager:
     Enhanced approval manager with intelligent auto-approval based on context.
     """
 
-    def __init__(self, request_user_approval: Callable, config: SmartApprovalConfig = None):
+    def __init__(self, request_user_approval: Callable, config: SmartApprovalConfig = None, permissive_mode: bool = False):
         self.base_approval_manager = ApprovalManager(request_user_approval)
         self.config = config or SmartApprovalConfig()
+        self.permissive_mode = permissive_mode
 
         # State tracking
         self.consecutive_auto_approvals = 0
@@ -56,7 +57,10 @@ class SmartApprovalManager:
             "write_to_file", "execute_command"
         }
 
-        logger.info("🧠 Smart approval manager initialized")
+        if permissive_mode:
+            logger.warning("⚠️  Smart approval manager in PERMISSIVE MODE - auto-approving ALL tools")
+        else:
+            logger.info("🧠 Smart approval manager initialized")
 
     async def request_approval(self, request: ToolApprovalRequest, tool_validator=None) -> ApprovalResponse:
         """
@@ -69,6 +73,16 @@ class SmartApprovalManager:
         Returns:
             ApprovalResponse with decision
         """
+
+        # Permissive mode auto-approves everything
+        if self.permissive_mode:
+            logger.info(f"✅ Auto-approved {request.tool_name} (permissive mode)")
+            return ApprovalResponse(
+                request_id=request.request_id,
+                decision=ApprovalDecision.APPROVED,
+                feedback="Auto-approved: permissive mode",
+                modified_parameters={}
+            )
 
         # Check if we should request user guidance due to mistakes
         if tool_validator and tool_validator.should_request_guidance():

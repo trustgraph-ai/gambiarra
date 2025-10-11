@@ -96,6 +96,7 @@ class CommandFilter:
             r'^python3\s+',
             r'^node\s+',
             r'^npm\s+(install|test|run|build|start)',
+            r'^npx\s+',
             r'^yarn\s+(install|test|run|build|start)',
             r'^pip\s+(install|list|show)',
             r'^cargo\s+(new|build|test|run|check|init)',

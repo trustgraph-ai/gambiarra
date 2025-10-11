@@ -74,7 +74,7 @@ class GambiarraClient:
             auto_approve_list_operations=True,
             mistake_limit_for_intervention=3
         )
-        self.approval_manager = SmartApprovalManager(self._request_user_approval, smart_config)
+        self.approval_manager = SmartApprovalManager(self._request_user_approval, smart_config, permissive_mode=permissive_mode)
 
         # Initialize tools
         self._initialize_tools()

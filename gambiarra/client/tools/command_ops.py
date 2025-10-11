@@ -35,7 +35,7 @@ class ExecuteCommandTool(CommandExecutionTool):
 
         command = parameters["command"]
         cwd = parameters.get("cwd", ".")
-        timeout = parameters.get("timeout", 30)
+        timeout = parameters.get("timeout", 60)  # Increased to 60s for package installs
 
         try:
             # Validate working directory
@@ -72,8 +72,8 @@ class ExecuteCommandTool(CommandExecutionTool):
         except asyncio.TimeoutError:
             return ToolResult.create_error(
                 "COMMAND_TIMEOUT",
-                f"Command timed out after {timeout} seconds",
-                {"command": command, "timeout": timeout}
+                f"Command timed out after {timeout} seconds. This may indicate the command is waiting for interactive input or is stuck.",
+                {"command": command, "timeout": timeout, "hint": "Try using non-interactive flags or increase timeout"}
             )
         except Exception as e:
             return ToolResult.create_error(
