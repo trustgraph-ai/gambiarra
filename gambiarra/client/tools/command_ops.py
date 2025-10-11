@@ -99,33 +99,52 @@ class ExecuteCommandTool(CommandExecutionTool):
 
             stdout_chunks = []
             stderr_chunks = []
+            last_output_time = time.time()
+            inactivity_timeout = 30  # Kill if no output for 30 seconds
 
             # Stream output
             async def read_stdout():
+                nonlocal last_output_time
                 while True:
-                    line = await process.stdout.readline()
-                    if not line:
-                        break
+                    try:
+                        # Use a short timeout on readline to check for inactivity
+                        line = await asyncio.wait_for(process.stdout.readline(), timeout=1.0)
+                        if not line:
+                            break
 
-                    line_str = line.decode('utf-8', errors='replace')
-                    stdout_chunks.append(line_str)
+                        last_output_time = time.time()
+                        line_str = line.decode('utf-8', errors='replace')
+                        stdout_chunks.append(line_str)
 
-                    # Send to stream callback if available
-                    if self.stream_callback:
-                        await self.stream_callback("stdout", line_str.rstrip())
+                        # Send to stream callback if available
+                        if self.stream_callback:
+                            await self.stream_callback("stdout", line_str.rstrip())
+                    except asyncio.TimeoutError:
+                        # Check if we've been inactive too long
+                        if time.time() - last_output_time > inactivity_timeout:
+                            raise asyncio.TimeoutError(f"No output for {inactivity_timeout} seconds - possible interactive prompt")
+                        continue
 
             async def read_stderr():
+                nonlocal last_output_time
                 while True:
-                    line = await process.stderr.readline()
-                    if not line:
-                        break
+                    try:
+                        line = await asyncio.wait_for(process.stderr.readline(), timeout=1.0)
+                        if not line:
+                            break
 
-                    line_str = line.decode('utf-8', errors='replace')
-                    stderr_chunks.append(line_str)
+                        last_output_time = time.time()
+                        line_str = line.decode('utf-8', errors='replace')
+                        stderr_chunks.append(line_str)
 
-                    # Send to stream callback if available
-                    if self.stream_callback:
-                        await self.stream_callback("stderr", line_str.rstrip())
+                        # Send to stream callback if available
+                        if self.stream_callback:
+                            await self.stream_callback("stderr", line_str.rstrip())
+                    except asyncio.TimeoutError:
+                        # Check if we've been inactive too long
+                        if time.time() - last_output_time > inactivity_timeout:
+                            raise asyncio.TimeoutError(f"No output for {inactivity_timeout} seconds - possible interactive prompt")
+                        continue
 
             # Wait for completion with timeout
             try:
@@ -160,6 +179,10 @@ class ExecuteCommandTool(CommandExecutionTool):
             "SHELL": os.environ.get("SHELL", "/bin/sh"),
             "TERM": os.environ.get("TERM", "xterm"),
             "LANG": os.environ.get("LANG", "en_US.UTF-8"),
+            # CI mode tells many tools to skip interactive prompts
+            "CI": "true",
+            "DEBIAN_FRONTEND": "noninteractive",  # For apt-get and similar
+            "NPM_CONFIG_YES": "true",  # For npm to skip prompts
         }
 
         # Add development tools if available
