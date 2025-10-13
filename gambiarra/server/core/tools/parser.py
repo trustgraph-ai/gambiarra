@@ -1,52 +1,176 @@
 """
 XML tool call parser that matches the master specification.
 Handles both flat and nested XML structures according to server/prompts/tools.py.
+
+This module now uses the robust ToolXMLParser from xml_parser.py with
+backward compatibility fallback to the legacy regex-based implementation.
 """
 
 import re
 import html
+import logging
 from typing import Dict, Any, Optional
+
+from .xml_parser import ToolXMLParser, ParseResult
+
+logger = logging.getLogger(__name__)
 
 
 class ToolCallParser:
     """Parses XML tool calls according to master specification."""
 
+    # Class-level parser instance
+    _xml_parser = ToolXMLParser()
+
     @staticmethod
     def parse_xml_parameters(xml_content: str) -> Dict[str, Any]:
-        """Parse parameters from XML tool content according to master specification."""
+        """
+        Parse parameters from XML tool content according to master specification.
 
-        def unescape_content(content: str) -> str:
-            """Unescape HTML entities in content."""
-            if content:
-                return html.unescape(content)
-            return content
+        Uses the robust ToolXMLParser with fallback to legacy regex-based parsing
+        for backward compatibility.
 
-        params = {}
+        Args:
+            xml_content: XML string containing tool call
 
-        # Determine tool type from root element
-        tool_type = ToolCallParser._extract_tool_type(xml_content)
+        Returns:
+            Dictionary of parsed parameters
 
-        if not tool_type:
-            # Fallback to legacy flat parsing for backward compatibility
-            return ToolCallParser._parse_flat_structure(xml_content, unescape_content)
+        Raises:
+            ValueError: If XML parsing fails completely
+        """
+        # Try the new robust XML parser first
+        result = ToolCallParser._xml_parser.parse_tool_call(xml_content)
 
-        # Parse according to master specification - all tools now use nested args structure
-        if tool_type == "read_file":
-            # Nested structure: <read_file><args><file><path>...</path></file></args></read_file>
-            path_match = re.search(r'<args>.*?<file>.*?<path>(.*?)</path>.*?</file>.*?</args>', xml_content, re.DOTALL)
-            if path_match:
-                params["path"] = unescape_content(path_match.group(1).strip())
+        if result.success:
+            # Successfully parsed with new parser
+            tool_name = result.data['tool_name']
+            parameters = result.data['parameters']
 
-        elif tool_type in ["write_to_file", "search_and_replace", "insert_content", "list_code_definition_names", "list_files", "search_files"]:
-            # Nested structure with args wrapper: <tool><args><path>...</path></args></tool>
-            path_match = re.search(r'<args>.*?<path>(.*?)</path>.*?</args>', xml_content, re.DOTALL)
-            if path_match:
-                params["path"] = unescape_content(path_match.group(1).strip())
+            # Normalize parameters to match legacy output format
+            normalized_params = ToolCallParser._normalize_parameters(tool_name, parameters)
 
-        # Extract tool-specific parameters
-        ToolCallParser._extract_tool_parameters(tool_type, xml_content, params, unescape_content)
+            logger.debug(f"Successfully parsed {tool_name} using ToolXMLParser")
+            return normalized_params
+        else:
+            # New parser failed, try legacy regex-based parser
+            logger.warning(
+                f"ToolXMLParser failed: {result.error}. Falling back to legacy regex parser."
+            )
 
-        return params
+            def unescape_content(content: str) -> str:
+                """Unescape HTML entities in content."""
+                if content:
+                    return html.unescape(content)
+                return content
+
+            params = {}
+
+            # Determine tool type from root element
+            tool_type = ToolCallParser._extract_tool_type(xml_content)
+
+            if not tool_type:
+                # Fallback to legacy flat parsing for backward compatibility
+                return ToolCallParser._parse_flat_structure(xml_content, unescape_content)
+
+            # Parse according to master specification - all tools now use nested args structure
+            if tool_type == "read_file":
+                # Nested structure: <read_file><args><file><path>...</path></file></args></read_file>
+                path_match = re.search(r'<args>.*?<file>.*?<path>(.*?)</path>.*?</file>.*?</args>', xml_content, re.DOTALL)
+                if path_match:
+                    params["path"] = unescape_content(path_match.group(1).strip())
+
+            elif tool_type in ["write_to_file", "search_and_replace", "insert_content", "list_code_definition_names", "list_files", "search_files"]:
+                # Nested structure with args wrapper: <tool><args><path>...</path></args></tool>
+                path_match = re.search(r'<args>.*?<path>(.*?)</path>.*?</args>', xml_content, re.DOTALL)
+                if path_match:
+                    params["path"] = unescape_content(path_match.group(1).strip())
+
+            # Extract tool-specific parameters
+            ToolCallParser._extract_tool_parameters(tool_type, xml_content, params, unescape_content)
+
+            return params
+
+    @staticmethod
+    def _normalize_parameters(tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Normalize parameters from ToolXMLParser output to match legacy format.
+
+        The new parser creates nested dictionaries and returns string values,
+        but the legacy code expects flat parameter dictionaries with proper
+        type conversion. This method flattens nested structures and converts
+        types as needed.
+
+        Args:
+            tool_name: Name of the tool
+            parameters: Parsed parameters from ToolXMLParser
+
+        Returns:
+            Normalized flat parameter dictionary with proper types
+        """
+        normalized = {}
+
+        # Define parameters that need type conversion
+        integer_params = {"line_count", "line_number", "start_line", "end_line"}
+        boolean_params = {"recursive"}
+
+        for key, value in parameters.items():
+            if key == "file" and isinstance(value, dict):
+                # Flatten nested file structure: {file: {path: "..."}} -> {path: "..."}
+                if "path" in value:
+                    normalized["path"] = value["path"]
+                # Preserve any other file attributes with type conversion
+                for subkey, subvalue in value.items():
+                    if subkey != "path":
+                        converted_value = ToolCallParser._convert_type(
+                            f"file_{subkey}", subvalue, integer_params, boolean_params
+                        )
+                        normalized[f"file_{subkey}"] = converted_value
+            else:
+                # Convert types as needed
+                converted_value = ToolCallParser._convert_type(key, value, integer_params, boolean_params)
+                normalized[key] = converted_value
+
+        return normalized
+
+    @staticmethod
+    def _convert_type(param_name: str, value: Any, integer_params: set, boolean_params: set) -> Any:
+        """
+        Convert parameter value to the appropriate type.
+
+        Args:
+            param_name: Name of the parameter
+            value: Raw value (typically a string from XML)
+            integer_params: Set of parameter names that should be integers
+            boolean_params: Set of parameter names that should be booleans
+
+        Returns:
+            Value converted to the appropriate type
+        """
+        # Don't convert if already correct type
+        if not isinstance(value, str):
+            return value
+
+        # Convert integers
+        if param_name in integer_params:
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                logger.warning(f"Failed to convert '{param_name}' value '{value}' to int")
+                return value
+
+        # Convert booleans
+        if param_name in boolean_params:
+            if value.lower() in ("true", "1", "yes"):
+                return True
+            elif value.lower() in ("false", "0", "no"):
+                return False
+            else:
+                logger.warning(f"Failed to convert '{param_name}' value '{value}' to bool")
+                return value
+
+        # Return string as-is
+        return value
 
     @staticmethod
     def _extract_tool_type(xml_content: str) -> Optional[str]:

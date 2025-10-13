@@ -246,7 +246,7 @@ class TestSessionManager:
 
         session_id = await session_manager.create_session(connection_id, config_dict)
 
-        session = session_manager.get_session(session_id)
+        session = await session_manager.get_session(session_id, auto_recover=False)
         assert session is not None
         assert session.session_id == session_id
         assert session.connection_id == connection_id
@@ -261,14 +261,14 @@ class TestSessionManager:
         session_id = await session_manager.create_session(connection_id, config_dict)
 
         # Get session
-        retrieved_session = session_manager.get_session(session_id)
+        retrieved_session = await session_manager.get_session(session_id, auto_recover=False)
 
         assert retrieved_session is not None
         assert retrieved_session.session_id == session_id
 
     async def test_get_nonexistent_session(self, session_manager):
         """Test getting a non-existent session."""
-        session = session_manager.get_session("nonexistent")
+        session = await session_manager.get_session("nonexistent", auto_recover=False)
         assert session is None
 
     async def test_remove_session(self, session_manager, session_config):
@@ -311,7 +311,7 @@ class TestSessionManager:
 
         # Create session
         session_id = await session_manager.create_session(connection_id, config_dict)
-        session = session_manager.get_session(session_id)
+        session = await session_manager.get_session(session_id, auto_recover=False)
 
         # Simulate old session by modifying last_activity
         session.last_activity = time.time() - 7200  # 2 hours ago
@@ -329,14 +329,14 @@ class TestSessionManager:
 
         session_id = await session_manager.create_session(connection_id, config_dict)
 
-        session = session_manager.get_session_by_connection(connection_id)
+        session = await session_manager.get_session_by_connection(connection_id)
         assert session is not None
         assert session.connection_id == connection_id
         assert session.session_id == session_id
 
     async def test_get_session_by_nonexistent_connection(self, session_manager):
         """Test getting session by non-existent connection."""
-        session = session_manager.get_session_by_connection("nonexistent")
+        session = await session_manager.get_session_by_connection("nonexistent")
         assert session is None
 
     async def test_list_active_sessions(self, session_manager, session_config):
@@ -359,7 +359,7 @@ class TestSessionManager:
         # Create sessions with different ages
         for i in range(3):
             session_id = await session_manager.create_session(f"conn-{i}", config_dict)
-            session = session_manager.get_session(session_id)
+            session = await session_manager.get_session(session_id, auto_recover=False)
             # Simulate different last activity times
             session.last_activity = time.time() - (i * 1800)  # 0, 30min, 1hr ago
 
@@ -392,12 +392,12 @@ class TestSessionManager:
 
         # Create session and add some state
         session_id = await session_manager.create_session(connection_id, config_dict)
-        session = session_manager.get_session(session_id)
+        session = await session_manager.get_session(session_id, auto_recover=False)
         await session.add_message("user", "Hello")
         session.pending_tools["req-1"] = {"tool": "read_file"}
 
         # Retrieve session and verify state persisted
-        retrieved_session = session_manager.get_session(session_id)
+        retrieved_session = await session_manager.get_session(session_id, auto_recover=False)
         assert len(retrieved_session.messages) == 1
         assert "req-1" in retrieved_session.pending_tools
         assert retrieved_session.messages[0].content == "Hello"

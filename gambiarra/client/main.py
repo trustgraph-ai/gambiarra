@@ -490,6 +490,7 @@ class GambiarraClient:
                 "type": "tool_result",
                 "session_id": self.session_id,
                 "execution_id": execution_id,
+                "tool_name": tool_name,
                 "result": result_dict
             })
         except Exception as e:

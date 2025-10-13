@@ -210,7 +210,7 @@ async def get_available_modes():
 @app.get("/sessions/{session_id}/mode")
 async def get_session_mode(session_id: str):
     """Get operating mode for a specific session."""
-    session = session_manager.get_session(session_id)
+    session = await session_manager.get_session(session_id, auto_recover=False)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -223,7 +223,7 @@ async def get_session_mode(session_id: str):
 @app.post("/sessions/{session_id}/mode")
 async def set_session_mode(session_id: str, request: dict):
     """Set operating mode for a specific session."""
-    session = session_manager.get_session(session_id)
+    session = await session_manager.get_session(session_id, auto_recover=False)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
@@ -455,7 +455,7 @@ async def handle_create_session(connection_id: str, message: Dict[str, Any]) -> 
 
 async def handle_user_message(session_id: str, message: Dict[str, Any]) -> None:
     """Handle user message - processes with AI and may trigger tool calls."""
-    session = session_manager.get_session(session_id)
+    session = await session_manager.get_session(session_id, auto_recover=False)
     if not session:
         raise ValueError(f"Session {session_id} not found")
 
@@ -646,7 +646,7 @@ async def request_tool_approval(session_id: str, tool_call: dict, websocket: Web
     request_id = str(uuid.uuid4())
 
     # Get session to check operating mode
-    session = session_manager.get_session(session_id)
+    session = await session_manager.get_session(session_id, auto_recover=False)
     if not session:
         logger.error(f"❌ Session {session_id} not found for tool approval")
         return
@@ -838,7 +838,7 @@ async def handle_tool_approval(session_id: str, message: Dict[str, Any]) -> Dict
 async def _handle_tool_denial_for_ai(session_id: str, tool_name: str, feedback: str) -> None:
     """Handle tool denial by feeding the information back into the AI conversation."""
     try:
-        session = session_manager.get_session(session_id)
+        session = await session_manager.get_session(session_id, auto_recover=False)
         if not session:
             logger.error(f"❌ Session {session_id} not found for tool denial handling")
             return
@@ -875,11 +875,22 @@ async def handle_tool_result(session_id: str, message: Dict[str, Any]) -> Dict[s
     """Handle tool execution result from client."""
     result = message["result"]
     execution_id = message["execution_id"]
+    tool_name = message.get("tool_name", "unknown")
 
     logger.info(f"🛠️ Tool result received for execution {execution_id}: {result['status']}")
 
+    # Check if this is attempt_completion - if so, stop the loop
+    if tool_name == "attempt_completion" and result.get("status") == "success":
+        logger.info(f"✅ Task completion confirmed - stopping agentic loop")
+        return {
+            "type": "task_completed",
+            "session_id": session_id,
+            "execution_id": execution_id,
+            "status": "completed"
+        }
+
     # Add tool result to session for automatic agentic loop
-    session = session_manager.get_session(session_id)
+    session = await session_manager.get_session(session_id, auto_recover=False)
     if session:
         # Add a detailed tool result that AI can understand and act on
         tool_summary = format_tool_result_for_ai(result)

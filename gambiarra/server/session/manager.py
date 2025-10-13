@@ -114,11 +114,18 @@ class Session:
 class SessionManager:
     """Manages user sessions."""
 
-    def __init__(self):
+    def __init__(self, enable_persistence: bool = True):
         self.sessions: Dict[str, Session] = {}
         self.connection_to_session: Dict[str, str] = {}
         self._lock = asyncio.Lock()
         self._total_sessions = 0
+
+        # Persistence support
+        self.enable_persistence = enable_persistence
+        self._persistence = None
+        if enable_persistence:
+            from .persistence import get_session_persistence
+            self._persistence = get_session_persistence()
 
     async def create_session(self, connection_id: str, config: Dict[str, Any]) -> str:
         """Create a new session."""
@@ -141,31 +148,70 @@ class SessionManager:
             self.connection_to_session[connection_id] = session_id
             self._total_sessions += 1
 
+            # Persist session
+            if self._persistence:
+                await self._persistence.save_session(session)
+
             logger.info(f"🎯 Created session {session_id} for connection {connection_id}")
 
             return session_id
 
-    def get_session(self, session_id: str) -> Optional[Session]:
-        """Get session by ID."""
+    async def get_session(self, session_id: str, auto_recover: bool = True) -> Optional[Session]:
+        """
+        Get session by ID.
+
+        Args:
+            session_id: Session ID
+            auto_recover: Try to recover from disk if not in memory
+
+        Returns:
+            Session or None
+        """
         session = self.sessions.get(session_id)
+
         if session:
             session.update_activity()
-        return session
+            # Auto-save on activity
+            if self._persistence:
+                await self._persistence.save_session(session)
+            return session
 
-    def get_session_by_connection(self, connection_id: str) -> Optional[Session]:
+        # Try to recover from disk
+        if auto_recover and self._persistence:
+            session = await self._persistence.load_session(session_id)
+            if session:
+                async with self._lock:
+                    self.sessions[session_id] = session
+                logger.info(f"📂 Recovered session {session_id} from disk")
+                return session
+
+        return None
+
+    async def get_session_by_connection(self, connection_id: str) -> Optional[Session]:
         """Get session by connection ID."""
         session_id = self.connection_to_session.get(connection_id)
         if session_id:
-            return self.get_session(session_id)
+            return await self.get_session(session_id)
         return None
 
-    async def cleanup_session(self, connection_id: str) -> None:
-        """Clean up session for a connection."""
+    async def cleanup_session(self, connection_id: str, persist: bool = True) -> None:
+        """
+        Clean up session for a connection.
+
+        Args:
+            connection_id: Connection ID
+            persist: Save session before removing from memory
+        """
         async with self._lock:
             session_id = self.connection_to_session.get(connection_id)
 
             if session_id:
-                # Remove session
+                # Persist session before cleanup
+                if persist and self._persistence and session_id in self.sessions:
+                    session = self.sessions[session_id]
+                    await self._persistence.save_session(session, force=True)
+
+                # Remove session from memory
                 if session_id in self.sessions:
                     del self.sessions[session_id]
                     logger.info(f"🧹 Cleaned up session {session_id}")
@@ -173,8 +219,17 @@ class SessionManager:
                 # Remove connection mapping
                 del self.connection_to_session[connection_id]
 
-    async def cleanup_expired_sessions(self, timeout: int) -> int:
-        """Clean up expired sessions."""
+    async def cleanup_expired_sessions(self, timeout: int, persist: bool = True) -> int:
+        """
+        Clean up expired sessions.
+
+        Args:
+            timeout: Session timeout in seconds
+            persist: Save sessions before removing from memory
+
+        Returns:
+            Number of sessions cleaned up
+        """
         async with self._lock:
             expired_sessions = []
 
@@ -185,6 +240,10 @@ class SessionManager:
             # Remove expired sessions
             for session_id in expired_sessions:
                 session = self.sessions[session_id]
+
+                # Persist session before removal
+                if persist and self._persistence:
+                    await self._persistence.save_session(session, force=True)
 
                 # Remove connection mapping
                 if session.connection_id in self.connection_to_session:
@@ -231,6 +290,55 @@ class SessionManager:
             })
 
         return sessions_info
+
+    async def recover_all_sessions(self) -> int:
+        """
+        Recover all sessions from disk.
+
+        Returns:
+            Number of sessions recovered
+        """
+        if not self._persistence:
+            logger.warning("Persistence disabled, cannot recover sessions")
+            return 0
+
+        persisted_sessions = await self._persistence.list_sessions()
+        recovered_count = 0
+
+        for session_info in persisted_sessions:
+            session_id = session_info['session_id']
+
+            # Skip if already in memory
+            if session_id in self.sessions:
+                continue
+
+            # Load from disk
+            session = await self._persistence.load_session(session_id)
+            if session:
+                async with self._lock:
+                    self.sessions[session_id] = session
+                    # Note: connection_to_session not restored (connection likely dead)
+                recovered_count += 1
+
+        if recovered_count > 0:
+            logger.info(f"📂 Recovered {recovered_count} sessions from disk")
+
+        return recovered_count
+
+    async def start_persistence(self) -> None:
+        """Start auto-save background task."""
+        if not self._persistence:
+            logger.warning("Persistence disabled")
+            return
+
+        await self._persistence.start_auto_save()
+
+    async def stop_persistence(self) -> None:
+        """Stop auto-save and flush remaining saves."""
+        if not self._persistence:
+            return
+
+        await self._persistence.stop_auto_save()
 
     async def start_cleanup_task(self, timeout: int = 3600, interval: int = 300) -> None:
         """Start background task to clean up expired sessions."""
