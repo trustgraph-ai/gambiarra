@@ -89,11 +89,17 @@ Description: Execute a command in the terminal. This tool allows you to run CLI 
 Parameters:
 - args: (required) Contains the command specification
   - command: (required) The shell command to execute
+  - timeout: (optional) Maximum time in seconds to wait for command completion. Defaults to 30 seconds if not specified. Set appropriately based on operation type:
+    * Quick commands (ls, cat): 5-10 seconds
+    * Package installs (npm install): 300 seconds
+    * Build operations (npm run build): 180 seconds
+    * Test suites: 120-180 seconds
 
 Usage:
 <execute_command>
 <args>
-<command>python -m pytest tests/</command>
+<command>npm install --yes</command>
+<timeout>300</timeout>
 </args>
 </execute_command>
 

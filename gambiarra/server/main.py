@@ -27,6 +27,7 @@ from gambiarra.server.core.tools.parser import ToolCallParser
 from gambiarra.server.core.tools.registry import get_tool_registry
 from gambiarra.server.core.tools.validator import validate_xml_tool_call
 from gambiarra.server.core.session.context import get_context_manager
+from gambiarra.server.prompts.tools import get_available_tools
 from gambiarra.server.core.events.bus import get_event_bus, EventTypes, publish_event
 from gambiarra.server.core.task.manager import get_task_manager
 from gambiarra.server.core.task.handlers import register_all_handlers
@@ -523,8 +524,34 @@ async def process_ai_response(session_id: str, session):
         if tool_calls:
             logger.info(f"🛠️ Found {len(tool_calls)} tool calls in AI response")
 
-            # Request approval for each tool
+            # Get list of valid tools for validation
+            valid_tools = get_available_tools()
+
+            # Validate and request approval for each tool
             for tool_call in tool_calls:
+                tool_name = tool_call.get('name', '')
+
+                # Validate tool name
+                if tool_name not in valid_tools:
+                    error_msg = f"Unknown tool '{tool_name}'. Valid tools are: {', '.join(valid_tools)}"
+                    logger.warning(f"⚠️ Invalid tool requested: {tool_name}")
+
+                    # Send error back to AI immediately
+                    error_result = {
+                        "status": "error",
+                        "error": error_msg,
+                        "data": None,
+                        "metadata": {"tool_name": tool_name, "valid_tools": valid_tools}
+                    }
+
+                    # Add error to session context so AI sees it
+                    session = await session_manager.get_session(session_id, auto_recover=False)
+                    await session.add_message("system", f"Tool execution error: {error_msg}")
+
+                    # Continue to next tool call
+                    continue
+
+                # Tool is valid, request approval
                 await request_tool_approval(session_id, tool_call, websocket)
 
         # Add AI response to conversation
@@ -708,7 +735,31 @@ async def request_tool_approval(session_id: str, tool_call: dict, websocket: Web
 def format_tool_result_for_ai(result: Dict[str, Any]) -> str:
     """Format tool result in a way AI can understand and act on."""
     if result.get("status") != "success":
-        return f"Tool failed: {result.get('error', 'Unknown error')}"
+        error_msg = result.get('error', 'Unknown error')
+        data = result.get('data', {}) or {}
+        metadata = result.get('metadata', {}) or {}
+
+        # Build detailed error message
+        error_parts = [f"Tool execution failed: {error_msg}"]
+
+        # Include command execution details if available
+        if 'exit_code' in data:
+            error_parts.append(f"Exit code: {data['exit_code']}")
+
+        if 'output' in data and data['output']:
+            output = data['output'].strip()
+            if output:
+                # Truncate very long output but keep enough for AI to understand
+                if len(output) > 1000:
+                    output = output[:1000] + f"\n... (output truncated, {len(output)} total chars)"
+                error_parts.append(f"Output:\n{output}")
+
+        # Include metadata for context (command, timeout, etc.)
+        if metadata:
+            meta_str = ", ".join(f"{k}={v}" for k, v in metadata.items())
+            error_parts.append(f"Context: {meta_str}")
+
+        return "\n\n".join(error_parts)
 
     data = result.get("data", {}) or {}
     metadata = result.get("metadata", {}) or {}

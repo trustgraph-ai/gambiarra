@@ -16,17 +16,19 @@ class AutomatedClient:
         self.workspace = Path(workspace)
         self.session_id = None
 
-    async def execute_command(self, command):
+    async def execute_command(self, command, timeout=30):
         """Execute a shell command in the workspace."""
         print(f"      $ {command}")
+        print(f"      ⏱️  Timeout: {timeout}s")
         try:
             result = subprocess.run(
                 command,
                 shell=True,
                 cwd=str(self.workspace),
+                stdin=subprocess.DEVNULL,  # Prevent hanging on interactive prompts
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=timeout
             )
             output = result.stdout + result.stderr
             success = result.returncode == 0
@@ -152,7 +154,8 @@ Then list the files to show me what was created."""
                         # Execute the actual tool
                         if tool_name == 'execute_command':
                             command = params['args'].get('command', '')
-                            result = await self.execute_command(command)
+                            timeout = params['args'].get('timeout', 30)  # Default 30s
+                            result = await self.execute_command(command, timeout)
                         elif tool_name == 'list_files':
                             path = params['args'].get('path', '.')
                             result = await self.list_files(path)

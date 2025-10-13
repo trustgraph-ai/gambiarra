@@ -62,7 +62,7 @@ Use the TrustGraph GraphRAG service to provide messages. Use collection 'default
             "It overflows the screen top and bottom, can you fix?"
         ]
 
-    async def execute_command(self, command):
+    async def execute_command(self, command, timeout=30):
         """Execute a shell command in the workspace."""
         # Skip npm run dev - it starts a server that doesn't exit
         if "npm run dev" in command or "npm dev" in command:
@@ -75,14 +75,16 @@ Use the TrustGraph GraphRAG service to provide messages. Use collection 'default
             }
 
         print(f"      $ {command}")
+        print(f"      ⏱️  Timeout: {timeout}s")
         try:
             result = subprocess.run(
                 command,
                 shell=True,
                 cwd=str(self.workspace),
+                stdin=subprocess.DEVNULL,  # Prevent hanging on interactive prompts
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minute timeout for npm installs
+                timeout=timeout
             )
             output = result.stdout + result.stderr
             success = result.returncode == 0
@@ -219,7 +221,8 @@ Use the TrustGraph GraphRAG service to provide messages. Use collection 'default
                     # Execute the actual tool
                     if tool_name == 'execute_command':
                         command = params['args'].get('command', '')
-                        result = await self.execute_command(command)
+                        timeout = params['args'].get('timeout', 30)  # Default 30s
+                        result = await self.execute_command(command, timeout)
                     elif tool_name == 'list_files':
                         path = params['args'].get('path', '.')
                         result = await self.list_files(path)

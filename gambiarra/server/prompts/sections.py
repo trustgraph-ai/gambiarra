@@ -94,7 +94,33 @@ COMMAND EXECUTION RULES
   1. Find the non-interactive flag version
   2. Provide all inputs as command-line arguments
   3. Use environment variables (CI=true is automatically set)
-- When in doubt, research the command's non-interactive options before executing."""
+- When in doubt, research the command's non-interactive options before executing.
+
+TIMEOUT STRATEGY
+
+- The execute_command tool accepts a `timeout` parameter (in seconds) that you should set based on the operation:
+  * **Quick commands** (ls, cat, grep, git status): 5-10 seconds
+  * **Package installs** (npm install, pip install, apt install): 300 seconds (5 minutes)
+  * **Build operations** (npm run build, webpack, cargo build): 180 seconds (3 minutes)
+  * **Test suites** (npm test, pytest): 120-180 seconds depending on size
+  * **Default**: If unsure, use 30 seconds for generic commands
+- NEVER run commands that start long-running servers (they will timeout):
+  * ❌ BAD: `npm run dev`, `python -m http.server`, `flask run`, `rails server`
+  * ✓ GOOD: `npm run build`, `npm test`, `python -m pytest`
+- If a command times out, you will see an error with the timeout duration. Analyze why it timed out:
+  * If it was waiting for input → add non-interactive flags
+  * If it was legitimately slow → retry with a longer timeout
+  * If it's a dev server → don't run it (user will run it separately)
+- Example timeout usage:
+  ```xml
+  <execute_command>
+  <args>
+    <command>npm install --yes</command>
+    <timeout>300</timeout>
+  </args>
+  </execute_command>
+  ```
+- The timeout helps prevent hung commands from blocking progress. Set it generously but reasonably."""
 
 
 def get_system_info_section(cwd: str) -> str:
