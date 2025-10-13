@@ -1,0 +1,77 @@
+<!-- Valid tool calls for testing XML parsing -->
+
+<!-- Read file with nested args structure -->
+<read_file>
+<args>
+<file>
+<path>main.py</path>
+</file>
+</args>
+</read_file>
+
+<!-- Write file with nested args structure -->
+<write_to_file>
+<args>
+<path>hello.py</path>
+<content>#!/usr/bin/env python3
+
+def main():
+    print("Hello, World!")
+
+if __name__ == "__main__":
+    main()
+</content>
+<line_count>7</line_count>
+</args>
+</write_to_file>
+
+<!-- List files with nested args structure -->
+<list_files>
+<args>
+<path>src</path>
+<recursive>true</recursive>
+</args>
+</list_files>
+
+<!-- Search files with nested args structure -->
+<search_files>
+<args>
+<path>.</path>
+<regex>def\s+\w+</regex>
+<file_pattern>*.py</file_pattern>
+</args>
+</search_files>
+
+<!-- Execute command with nested args structure -->
+<execute_command>
+<args>
+<command>python -m pytest tests/</command>
+</args>
+</execute_command>
+
+<!-- Search and replace with nested args structure -->
+<search_and_replace>
+<args>
+<path>config.py</path>
+<search>DEBUG = True</search>
+<replace>DEBUG = False</replace>
+</args>
+</search_and_replace>
+
+<!-- Insert content with nested args structure -->
+<insert_content>
+<args>
+<path>src/app.py</path>
+<line_number>10</line_number>
+<content># Added logging configuration
+import logging
+logging.basicConfig(level=logging.INFO)</content>
+</args>
+</insert_content>
+
+<!-- Attempt completion with nested args structure -->
+<attempt_completion>
+<args>
+<result>Successfully created the Python hello world program and verified it runs correctly.</result>
+</args>
+</attempt_completion>

@@ -1,58 +1,89 @@
-# Gambiarra 🧠
+# Gambiarra
 
-**Gambiarra** is a Python-based AI coding assistant that provides secure, client-side file operations with server-side AI orchestration. It's inspired by KiloCode and designed for maximum security and flexibility.
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+**Gambiarra** is an AI-powered coding assistant with a secure client-server architecture, inspired by KiloCode. It features client-side file operations for security and server-side AI orchestration for intelligent code assistance.
 
 > **Gambiarra** is a Brazilian Portuguese term meaning "creative improvised solution" - perfect for an AI that helps you solve coding problems!
 
-## Architecture
+## Features
 
-- **🔒 Client-Side Security**: All file operations happen locally for maximum security
-- **🧠 Server-Side AI**: AI providers and prompt orchestration handled server-side
-- **⚡ Real-Time Communication**: WebSocket-based bidirectional messaging
-- **🛡️ Tool Approval**: User-controlled approval workflow for all operations
-- **🔧 KiloCode Compatible**: Uses the same XML tool format and prompt system
+- 🔒 **Security-First Design**: Client-side file operations with comprehensive security validation
+- 🤖 **AI-Powered**: Server-side AI orchestration with multiple provider support (OpenAI, TrustGraph, Test)
+- 🔌 **Plugin System**: Dynamic tool loading and extensibility
+- ⚡ **High Performance**: Connection pooling, request batching, and fault tolerance
+- 🌐 **Real-time Communication**: WebSocket-based bidirectional communication
+- 🛡️ **Fault Tolerance**: Circuit breakers and graceful degradation
+- 📊 **Event-Driven**: Modern event-driven architecture with task management
+- 🎯 **Tool Management**: Comprehensive tool registry with versioning and validation
+- 🔧 **XML Tool Format**: Comprehensive XML-based tool calling system
 
 ## Quick Start
 
-### 1. Install Dependencies
+### Installation
 
 ```bash
+# Install from source (development)
+git clone https://github.com/gambiarra-team/gambiarra.git
 cd gambiarra
-pip install -r requirements.txt
+pip install -e .
+
+# Or install from PyPI (when published)
+pip install gambiarra
 ```
 
-### 2. Start the Test LLM Server
+### Usage
 
+**Start the server:**
 ```bash
-# Terminal 1: Start the dummy OpenAI server for testing
-cd test-llm
-python main.py
+# Using entry point (recommended)
+gambiarra-server
+
+# With custom settings
+gambiarra-server --host 0.0.0.0 --port 9000 --provider openai
+
+# Using module invocation
+python -m gambiarra.server
+
+# Get help
+gambiarra-server --help
 ```
 
-The test LLM server will start at `http://localhost:8001` and provide predictable responses for testing.
-
-### 3. Start the Gambiarra Server
-
+**Start the client:**
 ```bash
-# Terminal 2: Start the main Gambiarra server
-cd server
-python main.py
+# Using entry point (recommended)
+gambiarra-client
+
+# With custom workspace
+gambiarra-client --workspace /path/to/project
+
+# Using module invocation
+python -m gambiarra.client
+
+# Get help
+gambiarra-client --help
 ```
 
-The server will start at `http://localhost:8000` with WebSocket endpoint at `/ws`.
-
-### 4. Run the Client
-
+**Start the test LLM (for development):**
 ```bash
-# Terminal 3: Start the client in your project directory
-cd client
-python main.py --workspace /path/to/your/project
+# Using entry point (recommended)
+gambiarra-test-llm
+
+# With custom settings
+gambiarra-test-llm --port 9001 --host localhost
+
+# Using module invocation
+python -m gambiarra.test_llm
+
+# Get help
+gambiarra-test-llm --help
 ```
 
 ## Architecture Overview
 
 ```
-┌─────────────────┐    WebSocket     ┌─────────────────┐    HTTP      ┌─────────────────┐
+┌─────────────────┐    WebSocket   ┌─────────────────┐    HTTP     ┌─────────────────┐
 │                 │ ◄────────────► │                 │ ◄─────────► │                 │
 │  Gambiarra      │                │  Gambiarra      │             │  AI Provider    │
 │  Client         │                │  Server         │             │  (OpenAI/Test)  │
@@ -87,7 +118,7 @@ All tools execute locally on the client for security:
 
 - **Multiple Providers**: OpenAI, Anthropic, Google (extensible)
 - **Streaming Responses**: Real-time AI output with tool parsing
-- **KiloCode Prompts**: Compatible with KiloCode's prompt system
+- **Modular Prompts**: Comprehensive prompt system with tool descriptions
 - **Tool Orchestration**: XML-based tool call parsing and execution
 
 ## Configuration
@@ -112,6 +143,60 @@ export GAMBIARRA_WORKSPACE=/path/to/project
 export GAMBIARRA_AUTO_APPROVE_READS=true
 export GAMBIARRA_COMMAND_TIMEOUT=30
 export GAMBIARRA_LOG_LEVEL=INFO
+```
+
+## Command Line Options
+
+### Server Options
+
+```bash
+gambiarra-server --help
+```
+
+Available options:
+- `--host HOST` - Host to bind server to (default: localhost)
+- `--port PORT` - Port to bind server to (default: 8000)
+- `--provider PROVIDER` - AI provider: test, openai, trustgraph (default: test)
+- `--log-level LEVEL` - Logging level: DEBUG, INFO, WARNING, ERROR (default: INFO)
+- `--reload` - Enable auto-reload for development
+
+### Client Options
+
+```bash
+gambiarra-client --help
+```
+
+Available options:
+- `--workspace PATH` - Workspace root directory (default: current directory)
+- `--server-url URL` - Server WebSocket URL (default: ws://localhost:8000/ws)
+- `--auto-approve-reads` - Auto-approve read operations
+- `--command-timeout SECONDS` - Command execution timeout
+- `--log-level LEVEL` - Logging level
+
+### Test LLM Options
+
+```bash
+gambiarra-test-llm --help
+```
+
+Available options:
+- `--host HOST` - Host to bind server to (default: 0.0.0.0)
+- `--port PORT` - Port to bind server to (default: 8001)
+- `--log-level LEVEL` - Logging level: debug, info, warning, error (default: info)
+- `--reload` - Enable auto-reload for development
+
+## Module Invocation
+
+You can also run components using Python's module system:
+
+```bash
+# Show package information
+python -m gambiarra
+
+# Start components
+python -m gambiarra.server
+python -m gambiarra.client
+python -m gambiarra.test_llm
 ```
 
 ## Usage Examples
@@ -167,7 +252,7 @@ Approve? (y/n/m for modify): y
 ### Path Security
 
 - All file paths validated against workspace root
-- `.kilocodeignore` patterns respected
+- `.gambiarraignore` patterns respected
 - No access outside project directory
 - Symbolic link traversal protection
 
@@ -247,7 +332,7 @@ wscat -c ws://localhost:8000/ws
 
 - Verify workspace path is correct
 - Check file permissions
-- Review `.kilocodeignore` patterns
+- Review `.gambiarraignore` patterns
 - Enable debug logging: `--debug`
 
 ### AI Provider Issues
@@ -266,10 +351,11 @@ wscat -c ws://localhost:8000/ws
 
 ## License
 
-MIT License - see LICENSE file for details.
+Apache License 2.0 - see [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
-- Inspired by [KiloCode](https://github.com/Kilo-Org/kiloocode)
+- Inspired by [KiloCode](https://github.com/Kilo-Org/kiloocode), Roo-Code
+  and Cline.
 - Built with FastAPI, WebSockets, and asyncio
-- Brazilian ingenuity in software engineering 🇧🇷
+- Brazilian references are deliberate 🇧🇷

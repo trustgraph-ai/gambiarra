@@ -2,354 +2,214 @@
 
 ## Overview
 
-Gambiarra is a Python-based implementation of a headless AI coding assistant inspired by KiloCode. It provides a client-server architecture where all file operations are performed client-side for security, while the server handles AI orchestration and tool coordination.
+Gambiarra is an AI-powered coding assistant with a secure client-server architecture. It features client-side file operations for security and server-side AI orchestration for intelligent code assistance using XML-based tool calling.
 
-**Name Origin**: "Gambiarra" is a Brazilian Portuguese term referring to creative, improvised solutions - fitting for an AI coding assistant that helps developers solve complex problems.
+## Architecture
 
-## Architecture Components
-
-### 1. Server (`gambiarra/server/`)
-- **WebSocket Server**: Real-time bidirectional communication
-- **AI Provider Integration**: OpenAI, Anthropic, Google, etc.
-- **Prompt System**: KiloCode-compatible prompt generation
-- **Tool Orchestration**: XML-based tool call parsing and workflow management
-- **Session Management**: Multi-user concurrent sessions
-
-### 2. Client (`gambiarra/client/`)
-- **File Operations**: Secure local file system access
-- **Command Execution**: Sandboxed shell command execution
-- **Tool Implementation**: All KiloCode tools implemented client-side
-- **Security Manager**: Path validation, command filtering, approval workflows
-- **WebSocket Client**: Real-time server communication
-
-### 3. Test LLM (`gambiarra/test-llm/`)
-- **OpenAI API Mock**: Compatible dummy server for testing
-- **Predictable Responses**: Deterministic outputs for validation
-- **Tool Call Simulation**: XML-based tool invocation testing
-
-## Core Features
-
-### Tool System (Client-Side)
-Based on KiloCode's 25+ tools, implemented securely on client:
-
-#### File Operations
-- `read_file`: Read file contents with optional line ranges
-- `write_to_file`: Create/overwrite files with backup support
-- `search_files`: Regex search across multiple files
-- `list_files`: Directory listing with recursive support
-- `insert_content`: Add content at specific line positions
-- `search_and_replace`: Find/replace with regex support
-
-#### Code Analysis
-- `list_code_definition_names`: Extract function/class definitions
-- `codebase_search`: Semantic search across entire codebase
-
-#### System Operations
-- `execute_command`: Secure shell command execution
-- `git_operations`: Repository management commands
-
-#### Workflow Management
-- `attempt_completion`: Signal task completion
-- `ask_followup_question`: Request user clarification
-- `update_todo_list`: Task tracking and progress management
-
-### AI Integration (Server-Side)
-- **Prompt Generation**: KiloCode-compatible system prompts
-- **Streaming Responses**: Real-time AI output with tool parsing
-- **Provider Abstraction**: Multiple LLM provider support
-- **Context Management**: Conversation history and token optimization
-
-### Security Architecture
-- **Path Validation**: Prevent directory traversal attacks
-- **Command Filtering**: Whitelist/blacklist for shell commands
-- **User Approval**: Interactive tool execution approval
-- **Workspace Isolation**: Operations restricted to project directory
-
-## Technology Stack
-
-### Server Dependencies
-```python
-# Core server
-fastapi>=0.104.0          # Modern async web framework
-websockets>=12.0          # WebSocket support
-uvicorn>=0.24.0           # ASGI server
-
-# AI Integration
-openai>=1.0.0            # OpenAI API client
-anthropic>=0.7.0         # Anthropic API client
-google-generativeai>=0.3.0  # Google AI client
-
-# Utilities
-pydantic>=2.5.0          # Data validation
-aiofiles>=23.2.1         # Async file operations
-python-dotenv>=1.0.0     # Environment variable management
+### System Architecture
+```
+┌─────────────────┐    WebSocket     ┌─────────────────┐    HTTP      ┌─────────────────┐
+│                 │ ◄────────────► │                 │ ◄─────────► │                 │
+│  Gambiarra      │                │  Gambiarra      │             │  AI Provider    │
+│  Client         │                │  Server         │             │  (OpenAI/Test)  │
+│                 │                │                 │             │                 │
+│ • File Ops      │                │ • AI Orchestr.  │             │ • LLM Responses │
+│ • Security      │                │ • Tool Parsing  │             │ • Tool Calls    │
+│ • Tool Exec     │                │ • Sessions      │             │ • Streaming     │
+│ • Approvals     │                │ • WebSockets    │             │                 │
+└─────────────────┘                └─────────────────┘             └─────────────────┘
 ```
 
-### Client Dependencies
-```python
-# Core client
-websockets>=12.0          # WebSocket communication
-asyncio                   # Async operations
-pathlib                   # Path manipulation
-
-# File Operations
-aiofiles>=23.2.1         # Async file I/O
-watchdog>=3.0.0          # File system monitoring
-gitpython>=3.1.40        # Git operations
-
-# Security
-fnmatch                   # Pattern matching for .kilocodeignore
-subprocess               # Secure command execution
-
-# Code Analysis
-tree-sitter>=0.20.0     # Syntax tree parsing
-tree-sitter-python       # Python language support
-tree-sitter-javascript   # JavaScript language support
-tree-sitter-typescript   # TypeScript language support
+### Layered Architecture
+```
+┌─────────────────────────────────────────┐
+│             API Layer                   │  WebSocket handlers, HTTP endpoints
+├─────────────────────────────────────────┤
+│          Business Logic Layer           │  Task orchestration, workflow engine
+├─────────────────────────────────────────┤
+│           Service Layer                 │  AI providers, tool execution, sessions
+├─────────────────────────────────────────┤
+│          Infrastructure Layer           │  Database, file system, networking
+└─────────────────────────────────────────┘
 ```
 
-### Test LLM Dependencies
-```python
-# Mock server
-fastapi>=0.104.0         # API framework
-uvicorn>=0.24.0          # Server runtime
+## Core Components
+
+### 1. Client-Side Security Architecture
+
+**Path Validation**: All file operations are validated against workspace boundaries using comprehensive path security checks.
+
+**Command Filtering**: Shell commands are filtered through configurable whitelists and blacklists for security.
+
+**User Approval System**: Interactive confirmation system for potentially risky operations with risk-level classification.
+
+**File Context Tracking**: Intelligent tracking of file modifications and dependencies for context-aware operations.
+
+### 2. Server-Side AI Orchestration
+
+**Session Management**: Persistent sessions with configurable timeouts and state management.
+
+**AI Provider Abstraction**: Pluggable AI provider system supporting OpenAI, TrustGraph, and custom implementations.
+
+**Tool Registry**: Dynamic tool loading and validation system with comprehensive parameter checking.
+
+**Event-Driven Architecture**: Async message dispatch and component communication through event bus.
+
+### 3. Tool System
+
+#### XML-Based Tool Format
+All tools use structured XML format for consistent parsing and validation:
+
+```xml
+<tool_name>
+<args>
+<parameter>value</parameter>
+<nested_parameter>
+<sub_parameter>nested_value</sub_parameter>
+</nested_parameter>
+</args>
+</tool_name>
 ```
 
-## Message Protocol
+#### Available Tools
 
-### WebSocket Communication
+**File Operations**:
+- `read_file` - Read file contents with optional line ranges
+- `write_to_file` - Create or overwrite files with content validation
+- `list_files` - Directory listing with recursive options
+- `search_files` - Pattern-based file search with regex support
 
-#### Connection Handshake
-```json
-{
-  "type": "connect",
-  "protocol_version": "1.0",
-  "client_info": {
-    "platform": "python",
-    "version": "1.0.0",
-    "capabilities": ["file_operations", "command_execution"]
-  }
-}
-```
+**Code Operations**:
+- `search_and_replace` - Find and replace text in files
+- `insert_content` - Insert content at specific line numbers
+- `list_code_definition_names` - Extract function/class definitions
 
-#### Tool Approval Request
-```json
-{
-  "type": "tool_approval_request",
-  "request_id": "uuid",
-  "tool": {
-    "name": "write_to_file",
-    "parameters": {
-      "path": "src/main.py",
-      "content": "print('hello world')"
-    },
-    "description": "Create a simple Python hello world script",
-    "risk_level": "medium",
-    "requires_approval": true
-  }
-}
-```
+**System Operations**:
+- `execute_command` - Secure shell command execution
+- `attempt_completion` - Task completion signaling
+- `ask_followup_question` - Interactive user queries
+- `update_todo_list` - Task progress tracking
 
-#### Tool Execution
-```json
-{
-  "type": "execute_tool",
-  "execution_id": "uuid",
-  "tool": {
-    "name": "read_file",
-    "parameters": {
-      "path": "src/config.py",
-      "line_range": [1, 50]
-    }
-  }
-}
-```
-
-#### Tool Result
-```json
-{
-  "type": "tool_result",
-  "execution_id": "uuid",
-  "result": {
-    "status": "success",
-    "data": "# Configuration file\nDEBUG = True\n...",
-    "metadata": {
-      "file_size": 1024,
-      "line_count": 45,
-      "read_lines": "1-50"
-    }
-  }
-}
-```
-
-## Implementation Plan
-
-### Phase 1: Core Infrastructure
-1. **Test LLM Server**: OpenAI-compatible mock for development
-2. **Basic WebSocket Server**: Connection handling and message routing
-3. **Simple Client**: File read/write operations
-4. **Integration Test**: End-to-end tool execution
-
-### Phase 2: Tool Implementation
-1. **File Operations**: Complete set of file manipulation tools
-2. **Command Execution**: Secure shell command support
-3. **Security Manager**: Path validation and command filtering
-4. **Approval System**: Interactive user confirmation
-
-### Phase 3: AI Integration
-1. **Prompt System**: KiloCode-compatible prompt generation
-2. **Tool Parsing**: XML tool call extraction from AI responses
-3. **Multiple Providers**: OpenAI, Anthropic, Google support
-4. **Streaming**: Real-time response processing
-
-### Phase 4: Advanced Features
-1. **Code Analysis**: AST parsing and semantic search
-2. **Git Integration**: Repository operations
-3. **Context Management**: Smart file inclusion
-4. **Performance Optimization**: Concurrent operations
-
-### Phase 5: Production Ready
-1. **Error Handling**: Comprehensive error recovery
-2. **Logging**: Detailed operation tracking
-3. **Configuration**: Flexible deployment options
-4. **Documentation**: User and developer guides
-
-## Directory Structure
-
-```
-gambiarra/
-├── TECH-SPEC.md              # This document
-├── README.md                 # User guide and setup
-├── requirements.txt          # Combined dependencies
-├── server/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI server entry point
-│   ├── websocket_handler.py # WebSocket connection management
-│   ├── ai_integration/
-│   │   ├── __init__.py
-│   │   ├── providers.py     # LLM provider implementations
-│   │   ├── prompts.py       # KiloCode prompt system
-│   │   └── tool_parser.py   # XML tool call parsing
-│   ├── session/
-│   │   ├── __init__.py
-│   │   ├── manager.py       # Session state management
-│   │   └── conversation.py  # Message history handling
-│   └── config.py            # Server configuration
-├── client/
-│   ├── __init__.py
-│   ├── main.py              # Client entry point
-│   ├── websocket_client.py  # Server communication
-│   ├── tools/
-│   │   ├── __init__.py
-│   │   ├── base.py          # Tool interface
-│   │   ├── file_ops.py      # File operation tools
-│   │   ├── command_ops.py   # Command execution tools
-│   │   └── code_analysis.py # Code analysis tools
-│   ├── security/
-│   │   ├── __init__.py
-│   │   ├── path_validator.py # Path traversal protection
-│   │   ├── command_filter.py # Command security
-│   │   └── approval_manager.py # User approval workflows
-│   └── config.py            # Client configuration
-├── test-llm/
-│   ├── __init__.py
-│   ├── main.py              # OpenAI mock server
-│   ├── responses.py         # Predefined test responses
-│   └── tool_responses.py    # Tool call simulation
-└── tests/
-    ├── test_integration.py   # End-to-end tests
-    ├── test_server.py        # Server unit tests
-    ├── test_client.py        # Client unit tests
-    └── test_tools.py         # Tool implementation tests
-```
-
-## Security Considerations
+## Security Model
 
 ### Client-Side Security
-- **Workspace Containment**: All operations restricted to project directory
-- **Path Traversal Protection**: Absolute path validation
-- **Command Filtering**: Dangerous command detection and blocking
-- **User Approval**: Interactive confirmation for risky operations
-- **File Backup**: Automatic backup creation before modifications
+
+**Workspace Isolation**: All operations restricted to designated project directory with no external access.
+
+**Path Traversal Protection**: Comprehensive validation prevents directory traversal attacks and symlink exploitation.
+
+**Ignore Patterns**: Support for `.gambiarraignore` files to exclude sensitive files from operations.
+
+**Command Security**: Multi-layer command filtering with dangerous pattern detection and user confirmation.
 
 ### Server-Side Security
-- **No File Access**: Server never touches local file system
-- **Session Isolation**: Each client session completely isolated
-- **API Key Management**: Secure credential handling
-- **Rate Limiting**: Prevent abuse of AI providers
-- **Input Validation**: All messages validated against schemas
 
-### Communication Security
-- **WebSocket Encryption**: TLS/SSL for production deployments
-- **Message Validation**: JSON schema validation
-- **Authentication**: Token-based client authentication
-- **Audit Logging**: Complete operation history
+**Parameter Validation**: All tool parameters validated against strict schemas before execution.
+
+**Format Consistency**: XML format validation prevents parser drift and ensures reliable tool execution.
+
+**Session Security**: Secure session management with timeout handling and proper cleanup.
+
+## Data Flow
+
+### 1. Tool Execution Flow
+1. AI generates XML tool call following specification
+2. Server parses and validates XML structure
+3. Server wraps parameters in nested format for client
+4. Client validates parameters and requests user approval if needed
+5. Client unwraps parameters and executes tool locally
+6. Results sent back through WebSocket for AI processing
+
+### 2. Message Flow
+1. User sends message to client
+2. Client establishes WebSocket connection to server
+3. Server processes message with AI provider
+4. AI generates response with tool calls
+5. Tool calls executed on client with approval workflow
+6. Results aggregated and presented to user
 
 ## Configuration
 
 ### Server Configuration
-```python
-# server/config.py
-class ServerConfig:
-    host: str = "localhost"
-    port: int = 8000
-    ai_provider: str = "openai"  # openai, anthropic, google
-    api_key: str = None
-    max_sessions: int = 100
-    session_timeout: int = 3600
-    log_level: str = "INFO"
-```
+- Host/port binding with IPv4/IPv6 support
+- AI provider selection (test, OpenAI, TrustGraph)
+- Session management parameters
+- Logging and monitoring configuration
+- CORS and security settings
 
 ### Client Configuration
-```python
-# client/config.py
-class ClientConfig:
-    server_url: str = "ws://localhost:8000/ws"
-    workspace_root: str = "."
-    auto_approve_reads: bool = True
-    command_timeout: int = 30
-    max_file_size: int = 10_000_000  # 10MB
-    backup_enabled: bool = True
+- Server connection settings
+- Workspace directory configuration
+- Auto-approval policies for trusted operations
+- Command timeout settings
+- Security policy configuration
+
+## Extensibility
+
+### Plugin Architecture
+- Dynamic tool loading through registry system
+- Tool versioning and compatibility checking
+- Custom tool development framework
+- Event-driven plugin communication
+
+### AI Provider Integration
+- Abstract provider interface for consistent integration
+- Streaming response support
+- Tool call validation and formatting
+- Error handling and retry strategies
+
+### Event System
+- Pub/sub event architecture for component decoupling
+- Task lifecycle events
+- Error and recovery events
+- Performance monitoring events
+
+## Performance Characteristics
+
+### Scalability
+- Connection pooling for multiple concurrent sessions
+- Request batching for efficiency
+- Memory-optimized conversation context management
+- Configurable session limits and cleanup
+
+### Reliability
+- Circuit breaker patterns for fault tolerance
+- Automatic retry with exponential backoff
+- Graceful degradation during failures
+- Comprehensive error recovery mechanisms
+
+### Monitoring
+- Structured logging with configurable levels
+- Performance metrics and timing
+- Error tracking and analysis
+- Resource usage monitoring
+
+## Development and Deployment
+
+### Package Structure
+```
+gambiarra/
+├── server/              # AI orchestration server
+│   ├── main.py         # FastAPI server entry point
+│   ├── core/           # Core business logic
+│   ├── prompts/        # System prompts and tool specifications
+│   └── tools/          # Tool management and filtering
+├── client/             # Secure client implementation
+│   ├── main.py        # Client entry point
+│   ├── tools/         # Tool implementations
+│   └── security/      # Security components
+└── test_llm/          # Development test server
+    └── main.py        # Mock LLM for testing
 ```
 
-## Error Handling Strategy
+### Entry Points
+- `gambiarra-server` - Start AI orchestration server
+- `gambiarra-client` - Start secure client
+- `gambiarra-test-llm` - Start development test LLM
+- Module invocation: `python -m gambiarra.{component}`
 
-### Client Errors
-- **File Not Found**: Suggest similar files, offer to create
-- **Permission Denied**: Clear explanation, suggest fixes
-- **Command Failed**: Show error output, suggest alternatives
-- **Path Traversal**: Block with security warning
-
-### Server Errors
-- **AI Provider Error**: Automatic retry with exponential backoff
-- **Rate Limiting**: Queue requests, inform user of delays
-- **Network Error**: Graceful degradation, offline mode
-- **Session Timeout**: Automatic reconnection with state recovery
-
-### Recovery Mechanisms
-- **Automatic Retry**: Transient failures with backoff
-- **Graceful Degradation**: Core functionality when AI unavailable
-- **State Persistence**: Session recovery after disconnection
-- **Backup Restoration**: Undo operations when things go wrong
-
-## Testing Strategy
-
-### Unit Tests
-- **Tool Functions**: Each tool tested in isolation
-- **Security Components**: Path validation, command filtering
-- **Message Parsing**: Protocol message validation
-- **AI Integration**: Mock provider responses
-
-### Integration Tests
-- **End-to-End**: Client → Server → Mock LLM → Client
-- **Tool Workflows**: Multi-step tool execution chains
-- **Error Scenarios**: Network failures, permission errors
-- **Security**: Attempted attacks and boundary conditions
-
-### Performance Tests
-- **Concurrent Sessions**: Multiple client connections
-- **Large Files**: Memory usage and streaming
-- **Command Execution**: Long-running operations
-- **WebSocket Load**: Message throughput and latency
-
-This specification provides the foundation for building Gambiarra as a production-ready, secure, and scalable AI coding assistant that preserves the power of KiloCode while enabling flexible deployment scenarios.
+### Dependencies
+- **Server**: FastAPI, WebSockets, asyncio, aiofiles
+- **Client**: WebSocket client, aiofiles, security libraries
+- **Test LLM**: FastAPI, streaming response handling
+- **Common**: Pydantic for validation, structured logging

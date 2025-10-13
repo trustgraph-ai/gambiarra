@@ -1,0 +1,39 @@
+name: create-react-vite-typescript
+description: Create a React application with Vite and TypeScript in a subdirectory, then install dependencies
+tags:
+  - react
+  - vite
+  - typescript
+  - frontend
+  - create
+  - project-setup
+category: project-setup
+variables:
+  - name: app_name
+    description: Name for the app subdirectory
+    default: my-app
+    required: true
+steps:
+  - command: "printf 'y\\n' | npx --yes create-vite@latest {{app_name}} -- --template react-ts"
+    timeout: 60
+    description: Create Vite project with React TypeScript template
+    working_dir: "."
+  - command: "npm install"
+    timeout: 300
+    description: Install project dependencies
+    working_dir: "{{app_name}}"
+  - command: "npm run build"
+    timeout: 180
+    description: Verify project builds successfully
+    working_dir: "{{app_name}}"
+post_conditions:
+  - path: "{{app_name}}/package.json"
+    type: file
+  - path: "{{app_name}}/node_modules"
+    type: directory
+  - path: "{{app_name}}/dist"
+    type: directory
+notes: |
+  This playbook creates a React app in a subdirectory, not the current directory.
+  The printf pipes 'y' to handle the interactive prompt from create-vite.
+  After creation, it installs dependencies and runs a build to verify everything works.

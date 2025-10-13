@@ -1,0 +1,25 @@
+name: downgrade-react-18
+description: Downgrade React and React-DOM from version 19 to version 18 (required for many libraries)
+tags:
+  - react
+  - downgrade
+  - dependencies
+  - package-management
+category: package-management
+variables: []
+steps:
+  - command: "npm install react@18 react-dom@18"
+    timeout: 120
+    description: Install React 18 runtime dependencies
+    working_dir: "."
+  - command: "npm install --save-dev @types/react@18 @types/react-dom@18"
+    timeout: 120
+    description: Install React 18 TypeScript type definitions
+    working_dir: "."
+post_conditions:
+  - path: "package.json"
+    type: file
+notes: |
+  Many React libraries and tools require React 18 rather than React 19.
+  This playbook downgrades both the runtime and TypeScript types.
+  Run this in the project directory (where package.json is).

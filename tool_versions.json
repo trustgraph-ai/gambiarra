@@ -1,0 +1,210 @@
+{
+  "versions": {
+    "test_tool": [
+      {
+        "name": "test_tool",
+        "version": "1.0.0",
+        "description": "Test tool for versioning",
+        "parameters": [
+          {
+            "name": "file_path",
+            "type": "string",
+            "required": true,
+            "default": null,
+            "description": "Path to file"
+          },
+          {
+            "name": "content",
+            "type": "string",
+            "required": true,
+            "default": null,
+            "description": "File content"
+          }
+        ],
+        "capabilities": [
+          "file_operations"
+        ],
+        "deprecated": false,
+        "deprecation_message": null,
+        "compatible_versions": [],
+        "breaking_changes": [],
+        "created_at": "1758623334",
+        "checksum": "7fa246dd067e"
+      },
+      {
+        "name": "test_tool",
+        "version": "1.1.0",
+        "description": "Test tool v1.1 with encoding",
+        "parameters": [
+          {
+            "name": "file_path",
+            "type": "string",
+            "required": true,
+            "default": null,
+            "description": "Path to file"
+          },
+          {
+            "name": "content",
+            "type": "string",
+            "required": true,
+            "default": null,
+            "description": "File content"
+          },
+          {
+            "name": "encoding",
+            "type": "string",
+            "required": false,
+            "default": "utf-8",
+            "description": "File encoding"
+          }
+        ],
+        "capabilities": [
+          "file_operations"
+        ],
+        "deprecated": false,
+        "deprecation_message": null,
+        "compatible_versions": [],
+        "breaking_changes": [],
+        "created_at": "1758623334",
+        "checksum": "061bf60742c5"
+      },
+      {
+        "name": "test_tool",
+        "version": "1.0.0",
+        "description": "Test tool for versioning",
+        "parameters": [
+          {
+            "name": "file_path",
+            "type": "string",
+            "required": true,
+            "default": null,
+            "description": "Path to file"
+          },
+          {
+            "name": "content",
+            "type": "string",
+            "required": true,
+            "default": null,
+            "description": "File content"
+          }
+        ],
+        "capabilities": [
+          "file_operations"
+        ],
+        "deprecated": false,
+        "deprecation_message": null,
+        "compatible_versions": [],
+        "breaking_changes": [],
+        "created_at": "1758623352",
+        "checksum": "8cc6a9bd9d47"
+      },
+      {
+        "name": "test_tool",
+        "version": "1.1.0",
+        "description": "Test tool v1.1 with encoding",
+        "parameters": [
+          {
+            "name": "file_path",
+            "type": "string",
+            "required": true,
+            "default": null,
+            "description": "Path to file"
+          },
+          {
+            "name": "content",
+            "type": "string",
+            "required": true,
+            "default": null,
+            "description": "File content"
+          },
+          {
+            "name": "encoding",
+            "type": "string",
+            "required": false,
+            "default": "utf-8",
+            "description": "File encoding"
+          }
+        ],
+        "capabilities": [
+          "file_operations"
+        ],
+        "deprecated": false,
+        "deprecation_message": null,
+        "compatible_versions": [],
+        "breaking_changes": [],
+        "created_at": "1758623352",
+        "checksum": "8dc95e3d9d35"
+      },
+      {
+        "name": "test_tool",
+        "version": "1.0.0",
+        "description": "Test tool for versioning",
+        "parameters": [
+          {
+            "name": "file_path",
+            "type": "string",
+            "required": true,
+            "default": null,
+            "description": "Path to file"
+          },
+          {
+            "name": "content",
+            "type": "string",
+            "required": true,
+            "default": null,
+            "description": "File content"
+          }
+        ],
+        "capabilities": [
+          "file_operations"
+        ],
+        "deprecated": false,
+        "deprecation_message": null,
+        "compatible_versions": [],
+        "breaking_changes": [],
+        "created_at": "1758623364",
+        "checksum": "59ce409d8e61"
+      },
+      {
+        "name": "test_tool",
+        "version": "1.1.0",
+        "description": "Test tool v1.1 with encoding",
+        "parameters": [
+          {
+            "name": "file_path",
+            "type": "string",
+            "required": true,
+            "default": null,
+            "description": "Path to file"
+          },
+          {
+            "name": "content",
+            "type": "string",
+            "required": true,
+            "default": null,
+            "description": "File content"
+          },
+          {
+            "name": "encoding",
+            "type": "string",
+            "required": false,
+            "default": "utf-8",
+            "description": "File encoding"
+          }
+        ],
+        "capabilities": [
+          "file_operations"
+        ],
+        "deprecated": false,
+        "deprecation_message": null,
+        "compatible_versions": [],
+        "breaking_changes": [],
+        "created_at": "1758623364",
+        "checksum": "58ed89ec5aed"
+      }
+    ]
+  },
+  "current_versions": {
+    "test_tool": "1.1.0"
+  }
+}

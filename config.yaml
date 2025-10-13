@@ -1,0 +1,138 @@
+# Gambiarra Configuration File
+#
+# This file contains all configurable settings for the Gambiarra server and client.
+# Environment variables can be referenced using ${VARIABLE_NAME} syntax.
+
+server:
+  # Network settings
+  host: "0.0.0.0"
+  port: 8765
+
+  # Logging
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_file: null     # Optional file path for logging
+
+  # Session management
+  session:
+    timeout_seconds: 3600          # 1 hour session timeout
+    cleanup_interval: 300          # Check for expired sessions every 5 minutes
+    max_concurrent: 100            # Maximum concurrent sessions
+    persistence_enabled: true      # Enable session persistence
+    persistence_dir: "~/.cache/gambiarra/sessions"
+    auto_save_interval: 30         # Auto-save sessions every 30 seconds
+    max_session_age_days: 7        # Delete sessions older than 7 days
+
+  # AI Provider configuration
+  ai_provider:
+    type: "openai"  # openai, anthropic, or test
+    model: "gpt-4"
+    api_key: "${OPENAI_API_KEY}"
+    base_url: null  # Optional custom API endpoint
+
+    # Rate limiting for AI requests
+    rate_limit:
+      # Session limits (per session)
+      session_requests_per_minute: 60
+      session_tokens_per_hour: 100000
+      session_daily_budget: 50.0  # USD
+
+      # User limits (across all sessions for a user)
+      user_requests_per_minute: 300
+      user_tokens_per_hour: 500000
+      user_daily_budget: 200.0  # USD
+
+      # Global limits (entire system)
+      global_requests_per_minute: 1000
+      global_tokens_per_hour: 10000000
+      global_daily_budget: 5000.0  # USD
+
+      # Warning threshold (0-1)
+      warning_threshold: 0.8
+
+  # Prompt system configuration
+  prompts:
+    provider: "local"  # local or trustgraph
+
+    # Local template configuration
+    local:
+      template_dir: "./prompts/templates"
+      context_dir: "./prompts/contexts"
+      override_dir: "./prompts/overrides"
+      default_context: "personal"
+
+    # TrustGraph integration (optional)
+    trustgraph:
+      enabled: false
+      url: "https://trustgraph.ai"
+      api_key: "${TRUSTGRAPH_API_KEY}"
+      template_namespace: "gambiarra"
+
+  # Error handling and recovery
+  error_recovery:
+    max_error_history: 1000
+
+    # Circuit breaker configuration
+    circuit_breaker:
+      failure_threshold: 5      # Open circuit after N failures
+      success_threshold: 3      # Close circuit after N successes
+      timeout_seconds: 60.0     # Half-open timeout
+
+  # Transaction system
+  transactions:
+    enabled: true
+    backup_dir: "~/.cache/gambiarra/transactions"
+    log_dir: "~/.cache/gambiarra/transaction_logs"
+    auto_cleanup_hours: 24
+
+# Client configuration
+client:
+  # Server connection
+  server_url: "ws://localhost:8765"
+  reconnect_attempts: 3
+  reconnect_delay: 5  # seconds
+
+  # Security settings
+  security:
+    workspace_root: "."
+    ignore_file: ".gambiarraignore"
+    permissive_mode: false  # If true, disables some security checks
+
+    # Command filter
+    command_filter:
+      enabled: true
+      allow_sudo: false
+      allow_destructive: false
+
+    # Approval settings
+    approval:
+      auto_approve_reads: true
+      auto_approve_low_risk: true
+      require_approval_for_writes: true
+      mistake_limit: 3
+      max_consecutive_auto_approvals: 10
+
+  # Command execution
+  execution:
+    default_timeout: 60           # Default command timeout (seconds)
+    inactivity_timeout: 30        # Timeout if no output (seconds)
+    max_output_lines: 10000       # Maximum output lines to capture
+
+    # Command knowledge base
+    knowledge_base:
+      enabled: true
+      pre_execution_validation: true
+      auto_add_non_interactive_flags: true
+      warn_on_potentially_hanging: true
+
+  # Context management
+  context:
+    max_tracked_files: 200
+    max_tokens: 100000
+    semantic_selection: true
+    embedding_backend: "simple"  # simple or sentence-transformer
+
+  # Transactions
+  transactions:
+    enabled: true
+    auto_backup: true
+    backup_retention_hours: 24

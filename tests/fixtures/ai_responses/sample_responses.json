@@ -1,0 +1,66 @@
+{
+  "simple_text_response": {
+    "content": "I understand you want to read that file. Let me help you with that.",
+    "tool_calls": []
+  },
+
+  "read_file_response": {
+    "content": "I'll read the main.py file for you to see what it contains.",
+    "tool_calls": [
+      {
+        "name": "read_file",
+        "parameters": {
+          "path": "main.py"
+        }
+      }
+    ]
+  },
+
+  "write_file_response": {
+    "content": "I'll create a new Python file with the hello world code you requested.",
+    "tool_calls": [
+      {
+        "name": "write_to_file",
+        "parameters": {
+          "path": "hello.py",
+          "content": "#!/usr/bin/env python3\n\ndef main():\n    print(\"Hello, World!\")\n\nif __name__ == \"__main__\":\n    main()\n",
+          "line_count": 7
+        }
+      }
+    ]
+  },
+
+  "list_and_read_response": {
+    "content": "Let me first see what files are available, then read the main file.",
+    "tool_calls": [
+      {
+        "name": "list_files",
+        "parameters": {
+          "path": ".",
+          "recursive": false
+        }
+      }
+    ]
+  },
+
+  "error_response": {
+    "content": "I encountered an error while trying to complete your request. Let me try a different approach.",
+    "tool_calls": [],
+    "error": {
+      "code": "TOOL_EXECUTION_FAILED",
+      "message": "The previous tool call failed"
+    }
+  },
+
+  "completion_response": {
+    "content": "I've successfully completed the task. The file has been created and contains the code you requested.",
+    "tool_calls": [
+      {
+        "name": "attempt_completion",
+        "parameters": {
+          "result": "Successfully created hello.py with the requested Python code"
+        }
+      }
+    ]
+  }
+}
