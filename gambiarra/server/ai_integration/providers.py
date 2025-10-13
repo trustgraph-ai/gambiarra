@@ -270,19 +270,34 @@ class TrustGraphProvider(AIProvider):
             conversation_context = []
 
             logger.info(f"🔍 TrustGraph received {len(messages)} messages")
-            for i, msg in enumerate(messages):
+
+            # Only keep the last 20 messages to avoid overwhelming the context
+            # This preserves recent context while keeping prompt manageable
+            recent_messages = messages[-20:] if len(messages) > 20 else messages
+
+            if len(messages) > 20:
+                logger.info(f"📉 Limiting context: using last 20 of {len(messages)} messages")
+
+            for i, msg in enumerate(recent_messages):
                 if msg.get("role") == "system":
                     system_msg = msg.get("content", "")
                     logger.debug(f"System message: {system_msg[:100]}...")
                 else:
                     role = msg.get("role", "")
                     content = msg.get("content", "")
-                    conversation_context.append(f"{role}: {content}")
+
+                    # Add clear structure to tool results so LLM can identify them
+                    if "Tool result:" in content:
+                        formatted_msg = f"=== TOOL OUTPUT ===\n{role}: {content}\n=== END TOOL OUTPUT ==="
+                    else:
+                        formatted_msg = f"{role}: {content}"
+
+                    conversation_context.append(formatted_msg)
                     logger.debug(f"Message {i}: {role}: {content[:100]}...")
 
-            # Combine conversation into a single prompt for TrustGraph
+            # Combine conversation with clear message boundaries
             full_prompt = "\n\n".join(conversation_context)
-            logger.info(f"🔍 TrustGraph full prompt ({len(full_prompt)} chars): {full_prompt[:200]}...")
+            logger.info(f"🔍 TrustGraph full prompt ({len(full_prompt)} chars, {len(conversation_context)} messages): {full_prompt[:200]}...")
 
             # Create TrustGraph API instance
             api = Api(url=self.base_url)

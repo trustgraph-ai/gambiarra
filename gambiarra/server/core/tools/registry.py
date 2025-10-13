@@ -50,7 +50,7 @@ class ToolRegistry:
             },
             risk_level=ToolRiskLevel.LOW,
             requires_approval=False,
-            xml_format="<read_file><args><file><path>{path}</path></file></args></read_file>"
+            xml_format="<read_file><args><path>{path}</path></args></read_file>"
         ))
 
         self.register_tool(ToolDefinition(
@@ -76,6 +76,19 @@ class ToolRegistry:
             risk_level=ToolRiskLevel.LOW,
             requires_approval=False,
             xml_format="<list_files><path>{path}</path><recursive>{recursive}</recursive></list_files>"
+        ))
+
+        self.register_tool(ToolDefinition(
+            name="find_file",
+            description="Search for files by name pattern within a directory",
+            parameters={
+                "path": {"type": "string", "required": True, "description": "Directory to search in"},
+                "pattern": {"type": "string", "required": True, "description": "Glob pattern to match filenames"},
+                "max_depth": {"type": "integer", "required": False, "description": "Maximum directory depth"}
+            },
+            risk_level=ToolRiskLevel.LOW,
+            requires_approval=False,
+            xml_format="<find_file><args><path>{path}</path><pattern>{pattern}</pattern><max_depth>{max_depth}</max_depth></args></find_file>"
         ))
 
         self.register_tool(ToolDefinition(
@@ -172,6 +185,77 @@ class ToolRegistry:
             risk_level=ToolRiskLevel.LOW,
             requires_approval=False,
             xml_format="<update_todo_list><todos>{todos}</todos></update_todo_list>"
+        ))
+
+        # Playbook management
+        self.register_tool(ToolDefinition(
+            name="search_playbooks",
+            description="Search the playbook catalog for proven command sequences",
+            parameters={
+                "query": {"type": "string", "required": True, "description": "Search query for playbooks"}
+            },
+            risk_level=ToolRiskLevel.LOW,
+            requires_approval=False,
+            xml_format="<search_playbooks><args><query>{query}</query></args></search_playbooks>"
+        ))
+
+        self.register_tool(ToolDefinition(
+            name="execute_playbook",
+            description="Execute a playbook with variable substitution",
+            parameters={
+                "name": {"type": "string", "required": True, "description": "Playbook name to execute"},
+                "variables": {"type": "string", "required": False, "description": "JSON object with variables"}
+            },
+            risk_level=ToolRiskLevel.HIGH,
+            requires_approval=True,
+            xml_format="<execute_playbook><args><name>{name}</name><variables>{variables}</variables></args></execute_playbook>"
+        ))
+
+        # Knowledge management
+        self.register_tool(ToolDefinition(
+            name="store_knowledge",
+            description="Store information in session memory for later retrieval",
+            parameters={
+                "key": {"type": "string", "required": True, "description": "Unique key to store information under"},
+                "value": {"type": "string", "required": True, "description": "Information to store"},
+                "description": {"type": "string", "required": False, "description": "Description of what this information is"}
+            },
+            risk_level=ToolRiskLevel.LOW,
+            requires_approval=False,
+            xml_format="<store_knowledge><args><key>{key}</key><value>{value}</value><description>{description}</description></args></store_knowledge>"
+        ))
+
+        self.register_tool(ToolDefinition(
+            name="retrieve_knowledge",
+            description="Retrieve information from session memory by key",
+            parameters={
+                "key": {"type": "string", "required": True, "description": "Key to retrieve information for"}
+            },
+            risk_level=ToolRiskLevel.LOW,
+            requires_approval=False,
+            xml_format="<retrieve_knowledge><args><key>{key}</key></args></retrieve_knowledge>"
+        ))
+
+        self.register_tool(ToolDefinition(
+            name="list_knowledge",
+            description="List all knowledge that has been automatically extracted and stored during this session",
+            parameters={},
+            risk_level=ToolRiskLevel.LOW,
+            requires_approval=False,
+            xml_format="<list_knowledge></list_knowledge>"
+        ))
+
+        self.register_tool(ToolDefinition(
+            name="create_plan",
+            description="Create a structured plan for complex multi-step tasks",
+            parameters={
+                "task": {"type": "string", "required": True, "description": "Brief description of the overall task"},
+                "goals": {"type": "string", "required": True, "description": "List of goals/steps in order"},
+                "rationale": {"type": "string", "required": False, "description": "Brief explanation of the approach"}
+            },
+            risk_level=ToolRiskLevel.LOW,
+            requires_approval=False,
+            xml_format="<create_plan><args><task>{task}</task><goals>{goals}</goals><rationale>{rationale}</rationale></args></create_plan>"
         ))
 
     def register_tool(self, tool: ToolDefinition) -> None:

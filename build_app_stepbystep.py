@@ -3,6 +3,13 @@
 Build a complete TrustGraph React chat app using step-by-step prompts.
 """
 
+############################################################################
+#
+# NOTE TO DEVELOPERS!  THIS CODE EMULATES AN END-USER.  IT IS NOT A SOLUTION.
+# IT DOES NOT MAKE SENSE TO ADD CODE BUILDING LOGIC TO THIS SCRIPT
+#
+############################################################################
+
 import asyncio
 import json
 import subprocess
@@ -33,11 +40,7 @@ npm install @types/react@18 @types/react-dom@18 --save-dev
 
 This is required for @trustgraph/react-state compatibility.""",
 
-            """Install @trustgraph/react-state and read its README file:
-
-npm install @trustgraph/react-state
-
-Then read the README from node_modules/@trustgraph/react-state/README.md to learn how to configure the websocket proxy.""",
+            """Install @trustgraph/react-state and read its README to learn how to configure the websocket proxy.""",
 
             """Update vite.config.ts to add the websocket proxy configuration for TrustGraph.
 
@@ -131,6 +134,56 @@ Use the TrustGraph GraphRAG service to provide messages. Use collection 'default
                 "metadata": {"path": str(path)}
             }
 
+    async def find_file(self, path=".", pattern="*", max_depth=3):
+        """Find files matching a glob pattern."""
+        target = self.workspace / path
+        try:
+            from pathlib import Path
+            import fnmatch
+
+            matches = []
+
+            def search_dir(directory, depth=0):
+                if depth > max_depth:
+                    return
+                try:
+                    # Optimization: Check current directory first before recursing
+                    files = []
+                    dirs = []
+                    for item in directory.iterdir():
+                        if item.is_file():
+                            if fnmatch.fnmatch(item.name, pattern):
+                                relative_path = item.relative_to(self.workspace)
+                                matches.append({
+                                    "path": str(relative_path),
+                                    "name": item.name,
+                                    "size": item.stat().st_size
+                                })
+                        elif item.is_dir() and depth < max_depth:
+                            dirs.append(item)
+
+                    # Only recurse if we didn't find matches at this level
+                    if not matches:
+                        for subdir in dirs:
+                            search_dir(subdir, depth + 1)
+                except PermissionError:
+                    pass  # Skip directories we can't access
+
+            search_dir(target)
+
+            return {
+                "status": "success",
+                "data": {"matches": matches, "count": len(matches)},
+                "metadata": {"path": str(path), "pattern": pattern, "max_depth": max_depth}
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e),
+                "data": None,
+                "metadata": {"path": str(path), "pattern": pattern}
+            }
+
     async def read_file(self, path):
         """Read file contents."""
         target = self.workspace / path
@@ -222,10 +275,17 @@ Use the TrustGraph GraphRAG service to provide messages. Use collection 'default
                     if tool_name == 'execute_command':
                         command = params['args'].get('command', '')
                         timeout = params['args'].get('timeout', 30)  # Default 30s
+                        # Ensure timeout is a number (could be string from JSON)
+                        timeout = float(timeout) if timeout is not None else 30.0
                         result = await self.execute_command(command, timeout)
                     elif tool_name == 'list_files':
                         path = params['args'].get('path', '.')
                         result = await self.list_files(path)
+                    elif tool_name == 'find_file':
+                        path = params['args'].get('path', '.')
+                        pattern = params['args'].get('pattern', '*')
+                        max_depth = int(params['args'].get('max_depth', 3))
+                        result = await self.find_file(path, pattern, max_depth)
                     elif tool_name == 'read_file':
                         path = params['args'].get('path', '')
                         result = await self.read_file(path)

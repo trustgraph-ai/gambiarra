@@ -1,0 +1,31 @@
+name: install-npm-package
+description: Install an npm package as a dependency or dev dependency
+tags:
+  - npm
+  - install
+  - package
+  - dependencies
+  - package-management
+category: package-management
+variables:
+  - name: package_name
+    description: Name of the npm package to install
+    required: true
+  - name: dev
+    description: Install as dev dependency (true/false)
+    default: "false"
+    required: false
+steps:
+  - command: "npm install {% if dev == 'true' %}--save-dev {% endif %}{{package_name}}"
+    timeout: 300
+    description: Install npm package
+    working_dir: "."
+post_conditions:
+  - path: "node_modules"
+    type: directory
+  - path: "package.json"
+    type: file
+notes: |
+  Installs an npm package with appropriate timeout for large packages.
+  Set dev=true to install as a dev dependency.
+  Runs in current directory where package.json is located.

@@ -74,6 +74,56 @@ class AutomatedClient:
                 "metadata": {"path": str(path)}
             }
 
+    async def find_file(self, path=".", pattern="*", max_depth=3):
+        """Find files matching a glob pattern."""
+        target = self.workspace / path
+        try:
+            from pathlib import Path
+            import fnmatch
+
+            matches = []
+
+            def search_dir(directory, depth=0):
+                if depth > max_depth:
+                    return
+                try:
+                    # Optimization: Check current directory first before recursing
+                    files = []
+                    dirs = []
+                    for item in directory.iterdir():
+                        if item.is_file():
+                            if fnmatch.fnmatch(item.name, pattern):
+                                relative_path = item.relative_to(self.workspace)
+                                matches.append({
+                                    "path": str(relative_path),
+                                    "name": item.name,
+                                    "size": item.stat().st_size
+                                })
+                        elif item.is_dir() and depth < max_depth:
+                            dirs.append(item)
+
+                    # Only recurse if we didn't find matches at this level
+                    if not matches:
+                        for subdir in dirs:
+                            search_dir(subdir, depth + 1)
+                except PermissionError:
+                    pass  # Skip directories we can't access
+
+            search_dir(target)
+
+            return {
+                "status": "success",
+                "data": {"matches": matches, "count": len(matches)},
+                "metadata": {"path": str(path), "pattern": pattern, "max_depth": max_depth}
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e),
+                "data": None,
+                "metadata": {"path": str(path), "pattern": pattern}
+            }
+
     async def run(self):
         """Run the automated client."""
         uri = "ws://127.0.0.1:8010/ws"
@@ -100,13 +150,9 @@ class AutomatedClient:
             print()
 
             # Send request
-            request = """Please create a new Vite application using:
+            request = "Create a React application with TypeScript."
 
-npx create-vite@latest my-app --template vanilla
-
-Then list the files to show me what was created."""
-
-            print(f"💬 Request: Create Vite app")
+            print(f"💬 Request: {request}")
             await ws.send(json.dumps({
                 "type": "user_message",
                 "message": {"content": request}
@@ -155,10 +201,17 @@ Then list the files to show me what was created."""
                         if tool_name == 'execute_command':
                             command = params['args'].get('command', '')
                             timeout = params['args'].get('timeout', 30)  # Default 30s
+                            # Ensure timeout is a number (could be string from JSON)
+                            timeout = float(timeout) if timeout is not None else 30.0
                             result = await self.execute_command(command, timeout)
                         elif tool_name == 'list_files':
                             path = params['args'].get('path', '.')
                             result = await self.list_files(path)
+                        elif tool_name == 'find_file':
+                            path = params['args'].get('path', '.')
+                            pattern = params['args'].get('pattern', '*')
+                            max_depth = int(params['args'].get('max_depth', 3))
+                            result = await self.find_file(path, pattern, max_depth)
                         else:
                             result = {
                                 "status": "error",

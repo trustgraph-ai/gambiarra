@@ -1,0 +1,26 @@
+name: npm-run-build
+description: Run npm build command to compile/bundle the project
+tags:
+  - npm
+  - build
+  - compile
+  - bundle
+  - build-operations
+category: build-operations
+variables: []
+steps:
+  - command: "npm run build"
+    timeout: 180
+    description: Run build script from package.json
+    working_dir: "."
+post_conditions:
+  - path: "dist"
+    type: directory
+    optional: true
+  - path: "build"
+    type: directory
+    optional: true
+notes: |
+  Runs the build script defined in package.json.
+  Most projects output to 'dist' or 'build' directory.
+  Timeout set to 3 minutes for typical builds.

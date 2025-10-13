@@ -100,20 +100,25 @@ class XMLFormatValidator:
 
         # Tool-specific structure validation - all tools now use nested args structure
         if tool_name == "read_file":
-            # Should have nested structure: <read_file><args><file><path>...</path></file></args></read_file>
+            # Flat structure: <read_file><args><path>...</path></args></read_file>
             if "<args>" not in xml_content:
                 errors.append("read_file missing <args> element")
-            elif "<file>" not in xml_content:
-                errors.append("read_file missing <file> element within <args>")
-            elif not re.search(r'<args>.*<file>.*<path>.*</path>.*</file>.*</args>', xml_content, re.DOTALL):
-                errors.append("read_file has incorrect nested structure")
+            elif not re.search(r'<args>.*<path>.*</path>.*</args>', xml_content, re.DOTALL):
+                errors.append("read_file missing <path> element within <args>")
 
-        elif tool_name in ["write_to_file", "list_files", "search_files", "execute_command",
-                          "search_and_replace", "insert_content", "list_code_definition_names",
-                          "attempt_completion", "ask_followup_question", "update_todo_list"]:
-            # All tools now require nested args structure
-            if "<args>" not in xml_content:
-                errors.append(f"{tool_name} missing <args> element")
+        elif tool_name in ["write_to_file", "search_and_replace", "insert_content",
+                          "list_code_definition_names", "search_files", "execute_command",
+                          "list_files", "attempt_completion", "ask_followup_question", "update_todo_list"]:
+            # Flat structure (matching registry) - check for key element
+            key_elements = {
+                "write_to_file": "path", "search_and_replace": "path", "insert_content": "path",
+                "list_code_definition_names": "path", "search_files": "path", "execute_command": "command",
+                "list_files": "path", "attempt_completion": "result", "ask_followup_question": "question",
+                "update_todo_list": "todos"
+            }
+            required_elem = key_elements.get(tool_name)
+            if required_elem and f"<{required_elem}>" not in xml_content:
+                errors.append(f"{tool_name} missing <{required_elem}> element")
 
         return errors
 

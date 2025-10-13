@@ -30,7 +30,7 @@ class ToolModeFilter:
         # Define tool categories
         self.tool_categories = {
             # File operations
-            "file_read": {"read_file", "list_files", "search_files", "list_code_definition_names"},
+            "file_read": {"read_file", "list_files", "find_file", "search_files", "list_code_definition_names"},
             "file_write": {"write_to_file", "search_and_replace", "insert_content"},
 
             # Command execution
